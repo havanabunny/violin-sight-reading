@@ -77,7 +77,7 @@ body{
 .ledger{stroke:var(--ink); stroke-width:2.5;}
 .stem{stroke:var(--ink); stroke-width:3.5; stroke-linecap:round;}
 .notehead{fill:var(--ink);}
-.clef{font-size:64px; fill:var(--ink); font-family:'Noto Music',serif;}
+.clef{font-size:80px; fill:var(--ink); font-family:'Noto Music',serif;}
 .acc{font-size:46px; font-weight:700; fill:var(--ink); font-family:'Noto Music',serif;}
 .listenrow{display:flex; justify-content:center; margin:2px 0 6px;}
 .staffrow{display:flex; align-items:center; gap:10px; margin:2px 0;}
