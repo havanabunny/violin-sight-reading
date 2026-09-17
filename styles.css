@@ -79,6 +79,11 @@ body{
 .clef{font-size:92px; fill:var(--ink); font-family:'Noto Music','Segoe UI Symbol','Apple Symbols',serif;}
 .acc{font-size:46px; font-weight:700; fill:var(--ink);}
 .listenrow{display:flex; justify-content:center; margin:2px 0 6px;}
+.staffrow{display:flex; align-items:center; gap:10px; margin:2px 0;}
+.staffrow .staff{flex:1; min-width:0; margin:2px 0;}
+.hearbtn{flex:none; width:54px; height:54px; border-radius:50%; border:none; background:#fff;
+  box-shadow:0 3px 0 #e5e5e5; font-size:24px; cursor:pointer; -webkit-tap-highlight-color:transparent;}
+.hearbtn:active{transform:translateY(2px); box-shadow:0 1px 0 #e5e5e5;}
 .listen{
   display:inline-flex; align-items:center; gap:8px; border:2px solid var(--line); background:#fff;
   border-radius:999px; padding:9px 20px; font-family:inherit; font-weight:900; font-size:15px; color:var(--blue-dark);
