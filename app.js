@@ -97,7 +97,7 @@ function sfxBad(){ tone(196, 0, .22, .16); tone(147, .1, .32, .16); }
 
 // ---------------- Notation (SVG) ----------------
 function staffSVG(key){
-  const g = 16, W = 380, topY = 56;
+  const g = 16, W = 380, topY = 80;
   const y0 = topY + 4 * g;                 // step 0 = bottom line (E4)
   const y = s => y0 - s * g / 2;
   const cx = 218, n = NOTES[key], st = n.step;
@@ -117,10 +117,16 @@ function staffSVG(key){
   return `<svg viewBox="0 0 ${W} ${topY + 4*g + 58}" class="staff" aria-label="note">${s}</svg>`;
 }
 
-// Fingerboard geometry (compact, iPhone-friendly)
-const FB_NUT_Y = 40, FB_BOT_Y = 356;
+// Fingerboard geometry — researched from real 4/4 violin measurements:
+// fingerboard 270mm long (24mm wide at nut, 42mm at end), scale (nut→bridge) 328mm.
+// Finger distance from nut follows 12-TET: d = 328 * (1 - 2^(-n/12)) mm, n = semitones.
+// 1st (+2): 35.8mm, 2nd (+4): 67.7mm, 3rd (+5): 82.3mm, 4th (+7): 109.1mm.
+// The board is cropped just past 4th finger (135mm) with a fade implying continuation;
+// row positions below are true to scale within the shown region. String spread is
+// widened vs. reality for tappable dots — only the longitudinal distances are exact.
+const FB_NUT_Y = 40, FB_BOT_Y = 360;
 const FB_TOP_X = [134, 165, 196, 227], FB_BOT_X = [110, 157, 204, 251];
-const FB_ROWS = [40, 92, 168, 206, 282]; // open, 1st..4th finger — gaps follow semitones (2-2-1-2), half step between 2nd & 3rd
+const FB_ROWS = [40, 125, 200, 235, 299]; // open, 1st..4th — true-scale semitone positions
 function fbX(si, y){
   const t = (y - FB_NUT_Y) / (FB_BOT_Y - FB_NUT_Y);
   return FB_TOP_X[si] + (FB_BOT_X[si] - FB_TOP_X[si]) * t;
@@ -139,15 +145,18 @@ function spotSVG(si, f, mode, isCorrect){
 }
 // mode: 'quiz' (blank, tappable) | 'reveal' (correct spots green) | 'chart' (labeled)
 function fingerboardSVG(mode, targetKey){
-  const W = 360, H = 380;
+  const W = 360, H = 400;
   const correct = targetKey ? (NOTE_SPOTS[targetKey] || []) : [];
   const isCorrect = (si, f) => correct.some(c => c.s === si && c.f === f);
   let s = `<defs><linearGradient id="fbGrad" x1="0" y1="0" x2="0" y2="1">`
-    + `<stop offset="0" stop-color="#3d3d42"/><stop offset="1" stop-color="#222226"/></linearGradient></defs>`;
-  s += `<path d="M110,40 L250,40 L282,356 L78,356 Z" fill="url(#fbGrad)" stroke="#141416" stroke-width="2"/>`;
+    + `<stop offset="0" stop-color="#3d3d42"/><stop offset="1" stop-color="#222226"/></linearGradient>`
+    + `<linearGradient id="fbFade" x1="0" y1="0" x2="0" y2="1">`
+    + `<stop offset="0" stop-color="#ffffff" stop-opacity="0"/><stop offset="1" stop-color="#ffffff" stop-opacity="1"/></linearGradient></defs>`;
+  s += `<path d="M108,40 L252,40 L276,360 L84,360 Z" fill="url(#fbGrad)" stroke="#141416" stroke-width="2"/>`;
   const sw = [4, 3.4, 2.8, 2.2];
   for(let i = 0; i < 4; i++)
-    s += `<line x1="${FB_TOP_X[i]}" y1="34" x2="${FB_BOT_X[i]}" y2="356" stroke="#d7d7d7" stroke-width="${sw[i]}" opacity="0.85" stroke-linecap="round"/>`;
+    s += `<line x1="${FB_TOP_X[i]}" y1="34" x2="${FB_BOT_X[i]}" y2="360" stroke="#d7d7d7" stroke-width="${sw[i]}" opacity="0.85" stroke-linecap="round"/>`;
+  s += `<rect x="60" y="318" width="240" height="42" fill="url(#fbFade)"/>`;
   s += `<rect x="104" y="27" width="152" height="15" rx="5" fill="#f3ead8" stroke="#d9cdb4" stroke-width="2"/>`;
   const names = ['G','D','A','E'];
   for(let i = 0; i < 4; i++)
