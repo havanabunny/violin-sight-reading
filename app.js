@@ -257,8 +257,6 @@ function renderQ(){
       <div class="progress"><i id="pbar"></i></div>
       <div class="statbar" style="padding:0"><span class="s s-heart">❤️ ${Q.hearts}</span></div>
     </div>
-    <div class="q-prompt">Where do you play this note?</div>
-    <p class="q-hint">Tap a spot on the fingerboard · 🔊 to hear it</p>
     ${staffSVG(key)}
     <div class="listenrow"><button class="listen" id="hearBtn">🔊 Hear the note</button></div>
     <div id="fbWrap">${fingerboardSVG('quiz')}</div>
