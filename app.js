@@ -104,7 +104,7 @@ function staffSVG(key){
   let s = '';
   for(let i = 0; i < 5; i++)
     s += `<line x1="14" y1="${topY + i*g}" x2="${W-14}" y2="${topY + i*g}" class="staff-line"/>`;
-  s += `<text x="26" y="${topY + 2*g}" class="clef" dominant-baseline="central">𝄞</text>`;
+  s += `<text x="56" y="${topY + 2*g}" text-anchor="middle" class="clef">𝄞</text>`;
   const led = [];
   if(st <= -2){ for(let l = -2; l >= st - (st % 2 === 0 ? 0 : 1); l -= 2) led.push(l); }
   if(st >= 10){ for(let l = 10; l <= st + (st % 2 === 0 ? 0 : 1); l += 2) led.push(l); }
@@ -112,7 +112,7 @@ function staffSVG(key){
   const cy = y(st), stemLen = 3.5 * g;
   if(st >= 4) s += `<line x1="${cx-10}" y1="${cy+5}" x2="${cx-10}" y2="${cy+stemLen}" class="stem"/>`;
   else        s += `<line x1="${cx+10}" y1="${cy-5}" x2="${cx+10}" y2="${cy-stemLen}" class="stem"/>`;
-  if(n.acc) s += `<text x="${cx-46}" y="${cy}" class="acc" dominant-baseline="central">♯</text>`;
+  if(n.acc) s += `<text x="${cx-46}" y="${cy + 8}" class="acc">♯</text>`;
   s += `<ellipse cx="${cx}" cy="${cy}" rx="12" ry="8.6" transform="rotate(-18 ${cx} ${cy})" class="notehead"/>`;
   return `<svg viewBox="0 0 ${W} ${topY + 4*g + 58}" class="staff" aria-label="note">${s}</svg>`;
 }
