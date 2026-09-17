@@ -138,6 +138,11 @@ function spotSVG(si, f, mode, isCorrect){
   let cls = 'spot', inner = '';
   if(mode === 'chart')
     inner = `<text x="${x}" y="${y + 1}" text-anchor="middle" dominant-baseline="central" class="fb-lab">${NOTES[key].label}</text>`;
+  if(mode === 'print'){
+    if(!isCorrect(si, f)) return ''; // ink-saver: only the target note's spots
+    return `<g class="spot print-spot" data-s="${si}" data-f="${f}" data-k="${key}">`
+      + `<circle class="dot" cx="${x}" cy="${y}" r="18"/></g>`;
+  }
   if(mode === 'reveal' && isCorrect(si, f)) cls += ' right';
   return `<g class="${cls}" data-s="${si}" data-f="${f}" data-k="${key}">`
     + `<circle cx="${x}" cy="${y}" r="27" fill="transparent"/>`
@@ -146,18 +151,19 @@ function spotSVG(si, f, mode, isCorrect){
 // mode: 'quiz' (blank, tappable) | 'reveal' (correct spots green) | 'chart' (labeled)
 function fingerboardSVG(mode, targetKey){
   const W = 360, H = 400;
+  const print = mode === 'print';
   const correct = targetKey ? (NOTE_SPOTS[targetKey] || []) : [];
   const isCorrect = (si, f) => correct.some(c => c.s === si && c.f === f);
   let s = `<defs><linearGradient id="fbGrad" x1="0" y1="0" x2="0" y2="1">`
     + `<stop offset="0" stop-color="#4a3b2f"/><stop offset="1" stop-color="#241c15"/></linearGradient>`
     + `<linearGradient id="fbFade" x1="0" y1="0" x2="0" y2="1">`
     + `<stop offset="0" stop-color="#ffffff" stop-opacity="0"/><stop offset="1" stop-color="#ffffff" stop-opacity="1"/></linearGradient></defs>`;
-  s += `<path d="M108,40 L252,40 L276,360 L84,360 Z" fill="url(#fbGrad)" stroke="#100c09" stroke-width="2"/>`;
-  const sw = [4, 3.4, 2.8, 2.2];
+  s += `<path d="M108,40 L252,40 L276,360 L84,360 Z" fill="${print ? '#ffffff' : 'url(#fbGrad)'}" stroke="${print ? '#2a231b' : '#100c09'}" stroke-width="2"/>`;
+  const sw = [4, 3.4, 2.8, 2.2], strCol = print ? '#9a8d7a' : '#d7d7d7';
   for(let i = 0; i < 4; i++)
-    s += `<line x1="${FB_TOP_X[i]}" y1="34" x2="${FB_BOT_X[i]}" y2="360" stroke="#d7d7d7" stroke-width="${sw[i]}" opacity="0.85" stroke-linecap="round"/>`;
-  s += `<rect x="60" y="318" width="240" height="42" fill="url(#fbFade)"/>`;
-  s += `<rect x="104" y="27" width="152" height="15" rx="5" fill="#f3ead8" stroke="#d9cdb4" stroke-width="2"/>`;
+    s += `<line x1="${FB_TOP_X[i]}" y1="34" x2="${FB_BOT_X[i]}" y2="360" stroke="${strCol}" stroke-width="${sw[i]}" opacity="0.85" stroke-linecap="round"/>`;
+  if(!print) s += `<rect x="60" y="318" width="240" height="42" fill="url(#fbFade)"/>`;
+  s += `<rect x="104" y="27" width="152" height="15" rx="5" fill="${print ? '#ffffff' : '#f3ead8'}" stroke="${print ? '#2a231b' : '#d9cdb4'}" stroke-width="2"/>`;
   const names = ['G','D','A','E'];
   for(let i = 0; i < 4; i++)
     s += `<text x="${FB_TOP_X[i]}" y="16" text-anchor="middle" class="fb-str">${names[i]}</text>`;
@@ -251,6 +257,32 @@ function renderHome(){
   app.querySelectorAll('.lvl[data-lv]').forEach(b => {
     if(!b.disabled) b.onclick = () => startRound(parseInt(b.dataset.lv, 10));
   });
+  window.scrollTo(0, 0);
+}
+
+/* ---------- print ---------- */
+function renderPrint(){
+  hideSheet();
+  const secs = LEVELS.map(lv => `
+    <div class="print-level">
+      <div class="print-lvtitle">${lv.icon} Level ${lv.id} · ${lv.title}</div>
+      <div class="print-grid">
+        ${levelPool(lv).map(k => `
+          <div class="pcard">
+            <div class="pcard-name">${NOTES[k].label}</div>
+            ${staffSVG(k)}
+            ${fingerboardSVG('print', k)}
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+  app.innerHTML = `
+    <div class="backrow noprint"><button class="back" id="backBtn">‹</button>
+      <div class="q-prompt" style="margin:0; flex:1;">Print Reference</div></div>
+    <p class="q-hint noprint">Ink-saver layout · each level starts on a new page</p>
+    ${secs}
+    <div class="foot noprint"><button class="btn btn-blue" id="doPrint">🖨 Print</button></div>`;
+  document.getElementById('backBtn').onclick = renderChart;
+  document.getElementById('doPrint').onclick = () => window.print();
   window.scrollTo(0, 0);
 }
 
@@ -392,7 +424,7 @@ function renderChart(){
         <div class="ncard" data-k="${k}">${staffSVG(k)}<b>${NOTES[k].label}</b></div>`).join('')}
     </div>`).join('');
   app.innerHTML = `
-    <div class="backrow"><button class="back" id="backBtn">‹</button><div class="q-prompt" style="margin:0">Note Chart</div></div>
+    <div class="backrow"><button class="back" id="backBtn">‹</button><div class="q-prompt" style="margin:0; flex:1;">Note Chart</div><button class="printbtn noprint" id="printBtn" aria-label="Print">🖨</button></div>
     <p class="q-hint">Tap any note to hear it 🎧</p>
     ${secs}
     <div class="section-t">🎻 Fingerboard</div>
@@ -401,6 +433,7 @@ function renderChart(){
     <div class="foot"><button class="btn btn-ghost" id="homeBtn">Back home</button></div>`;
   document.getElementById('backBtn').onclick = renderHome;
   document.getElementById('homeBtn').onclick = renderHome;
+  document.getElementById('printBtn').onclick = renderPrint;
   app.querySelectorAll('.ncard').forEach(c => { c.onclick = () => playNote(c.dataset.k); });
   document.getElementById('fbSvg').addEventListener('click', e => {
     const g = e.target.closest('.spot');
