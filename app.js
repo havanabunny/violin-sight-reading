@@ -120,7 +120,7 @@ function staffSVG(key){
 // Fingerboard geometry (compact, iPhone-friendly)
 const FB_NUT_Y = 40, FB_BOT_Y = 356;
 const FB_TOP_X = [134, 165, 196, 227], FB_BOT_X = [110, 157, 204, 251];
-const FB_ROWS = [40, 106, 166, 220, 270]; // open, 1st..4th finger
+const FB_ROWS = [40, 92, 168, 206, 282]; // open, 1st..4th finger — gaps follow semitones (2-2-1-2), half step between 2nd & 3rd
 function fbX(si, y){
   const t = (y - FB_NUT_Y) / (FB_BOT_Y - FB_NUT_Y);
   return FB_TOP_X[si] + (FB_BOT_X[si] - FB_TOP_X[si]) * t;
@@ -128,12 +128,14 @@ function fbX(si, y){
 function spotSVG(si, f, mode, isCorrect){
   const y = FB_ROWS[f], x = fbX(si, y);
   const key = f === 0 ? STRINGS[si].open : STRINGS[si].fingers[f - 1];
-  const r = f === 0 ? 14 : 18;
+  const r = 15;
   let cls = 'spot', inner = '';
   if(mode === 'chart')
     inner = `<text x="${x}" y="${y + 1}" text-anchor="middle" dominant-baseline="central" class="fb-lab">${NOTES[key].label}</text>`;
   if(mode === 'reveal' && isCorrect(si, f)) cls += ' right';
-  return `<g class="${cls}" data-s="${si}" data-f="${f}" data-k="${key}"><circle cx="${x}" cy="${y}" r="${r}"/>${inner}</g>`;
+  return `<g class="${cls}" data-s="${si}" data-f="${f}" data-k="${key}">`
+    + `<circle cx="${x}" cy="${y}" r="27" fill="transparent"/>`
+    + `<circle class="dot" cx="${x}" cy="${y}" r="${r}"/>${inner}</g>`;
 }
 // mode: 'quiz' (blank, tappable) | 'reveal' (correct spots green) | 'chart' (labeled)
 function fingerboardSVG(mode, targetKey){
@@ -151,7 +153,10 @@ function fingerboardSVG(mode, targetKey){
   for(let i = 0; i < 4; i++)
     s += `<text x="${FB_TOP_X[i]}" y="16" text-anchor="middle" class="fb-str">${names[i]}</text>`;
   for(let f = 1; f <= 4; f++)
-    s += `<text x="94" y="${FB_ROWS[f]}" text-anchor="middle" dominant-baseline="central" class="fb-fnum">${f}</text>`;
+    s += `<text x="64" y="${FB_ROWS[f]}" text-anchor="middle" dominant-baseline="central" class="fb-fnum">${f}</text>`;
+  // half-step marker between 2nd and 3rd fingers
+  s += `<line x1="46" y1="${FB_ROWS[2]}" x2="46" y2="${FB_ROWS[3]}" class="fb-halfline"/>`
+     + `<text x="33" y="${(FB_ROWS[2] + FB_ROWS[3]) / 2}" text-anchor="middle" dominant-baseline="central" class="fb-half">½</text>`;
   for(let si = 0; si < 4; si++){
     s += spotSVG(si, 0, mode, isCorrect);
     for(let f = 1; f <= 4; f++) s += spotSVG(si, f, mode, isCorrect);
