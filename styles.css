@@ -146,9 +146,11 @@ body{
 .fb-str{font-size:16px; font-weight:900; fill:#8e8e93;}
 .fb-fnum{font-size:14px; font-weight:800; fill:#aeaeb2;}
 .spot{cursor:pointer; -webkit-user-select:none; user-select:none;}
-.spot circle{fill:#fffdf6; stroke:#c9c2b4; stroke-width:2; transform-box:fill-box; transform-origin:center; transition:transform .08s;}
-.spot:active circle{transform:scale(.9);}
-.spot.sel circle{fill:var(--blue); stroke:var(--blue-dark);}
-.spot.right circle{fill:var(--green); stroke:var(--green-dark); animation:pop .35s;}
-.spot.wrong circle{fill:var(--red); stroke:var(--red-dark); animation:shake .4s;}
+.spot circle.dot{fill:#fffdf6; stroke:#c9c2b4; stroke-width:2; transform-box:fill-box; transform-origin:center; transition:transform .08s;}
+.spot:active circle.dot{transform:scale(.9);}
+.spot.sel circle.dot{fill:var(--blue); stroke:var(--blue-dark);}
+.spot.right circle.dot{fill:var(--green); stroke:var(--green-dark); animation:pop .35s;}
+.spot.wrong circle.dot{fill:var(--red); stroke:var(--red-dark); animation:shake .4s;}
+.fb-halfline{stroke:#aeaeb2; stroke-width:2;}
+.fb-half{font-size:12px; font-weight:800; fill:#aeaeb2;}
 .fb-lab{font-size:13px; font-weight:900; fill:#3c3c3c; pointer-events:none;}
