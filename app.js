@@ -266,12 +266,11 @@ function renderQ(){
       <div class="progress"><i id="pbar"></i></div>
       <div class="statbar" style="padding:0"><span class="s s-heart">❤️ ${Q.hearts}</span></div>
     </div>
-    <div class="staffrow">${staffSVG(key)}<button class="hearbtn" id="hearBtn" aria-label="Hear the note">🔊</button></div>
+    ${staffSVG(key)}
     <div id="fbWrap">${fingerboardSVG('quiz')}</div>
     <div class="foot"><button class="btn btn-green" id="checkBtn" disabled>Check</button></div>`;
   document.getElementById('pbar').style.width = (Q.idx / ROUND_LEN * 100) + '%';
   document.getElementById('quitBtn').onclick = renderHome;
-  document.getElementById('hearBtn').onclick = () => playNote(key);
   const checkBtn = document.getElementById('checkBtn');
   document.getElementById('fbSvg').addEventListener('click', e => {
     if(Q.locked) return;
@@ -281,6 +280,7 @@ function renderQ(){
     g.classList.add('sel');
     Q.picked = {s:+g.dataset.s, f:+g.dataset.f};
     checkBtn.disabled = false;
+    playNote(g.dataset.k);
   });
   checkBtn.onclick = grade;
 }
