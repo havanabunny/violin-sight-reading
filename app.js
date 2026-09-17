@@ -30,6 +30,27 @@ const LEVELS = [
 ];
 const ROUND_LEN = 10;
 
+// ---------------- Fingerboard ----------------
+// Viewed as the player sees it: G string on the left, scroll at top.
+const STRINGS = [
+  {name:'G', open:'G3', fingers:['A3','B3','C4','D4']},
+  {name:'D', open:'D4', fingers:['E4','Fs4','G4','A4']},
+  {name:'A', open:'A4', fingers:['B4','Cs5','D5','E5']},
+  {name:'E', open:'E5', fingers:['Fs5','G5','A5','B5']},
+];
+// note key -> every playable spot {s: string index, f: 0=open,1..4 finger}
+const NOTE_SPOTS = {};
+STRINGS.forEach((st, si) => {
+  (NOTE_SPOTS[st.open] = NOTE_SPOTS[st.open] || []).push({s:si, f:0});
+  st.fingers.forEach((k, fi) => {
+    (NOTE_SPOTS[k] = NOTE_SPOTS[k] || []).push({s:si, f:fi + 1});
+  });
+});
+function spotName(si, f){
+  const ord = ['open','1st','2nd','3rd','4th'];
+  return f === 0 ? `open ${STRINGS[si].name} string` : `${ord[f]} finger · ${STRINGS[si].name} string`;
+}
+
 // ---------------- Storage ----------------
 function loadS(){
   try { return JSON.parse(localStorage.getItem('vsr')) || null; } catch(e){ return null; }
@@ -92,6 +113,48 @@ function staffSVG(key){
   return `<svg viewBox="0 0 ${W} ${topY + 4*g + 58}" class="staff" aria-label="note">${s}</svg>`;
 }
 
+// Fingerboard geometry (compact, iPhone-friendly)
+const FB_NUT_Y = 40, FB_BOT_Y = 356;
+const FB_TOP_X = [134, 165, 196, 227], FB_BOT_X = [110, 157, 204, 251];
+const FB_ROWS = [40, 106, 166, 220, 270]; // open, 1st..4th finger
+function fbX(si, y){
+  const t = (y - FB_NUT_Y) / (FB_BOT_Y - FB_NUT_Y);
+  return FB_TOP_X[si] + (FB_BOT_X[si] - FB_TOP_X[si]) * t;
+}
+function spotSVG(si, f, mode, isCorrect){
+  const y = FB_ROWS[f], x = fbX(si, y);
+  const key = f === 0 ? STRINGS[si].open : STRINGS[si].fingers[f - 1];
+  const r = f === 0 ? 14 : 18;
+  let cls = 'spot', inner = '';
+  if(mode === 'chart')
+    inner = `<text x="${x}" y="${y + 1}" text-anchor="middle" dominant-baseline="central" class="fb-lab">${NOTES[key].label}</text>`;
+  if(mode === 'reveal' && isCorrect(si, f)) cls += ' right';
+  return `<g class="${cls}" data-s="${si}" data-f="${f}" data-k="${key}"><circle cx="${x}" cy="${y}" r="${r}"/>${inner}</g>`;
+}
+// mode: 'quiz' (blank, tappable) | 'reveal' (correct spots green) | 'chart' (labeled)
+function fingerboardSVG(mode, targetKey){
+  const W = 360, H = 380;
+  const correct = targetKey ? (NOTE_SPOTS[targetKey] || []) : [];
+  const isCorrect = (si, f) => correct.some(c => c.s === si && c.f === f);
+  let s = `<defs><linearGradient id="fbGrad" x1="0" y1="0" x2="0" y2="1">`
+    + `<stop offset="0" stop-color="#3d3d42"/><stop offset="1" stop-color="#222226"/></linearGradient></defs>`;
+  s += `<path d="M110,40 L250,40 L282,356 L78,356 Z" fill="url(#fbGrad)" stroke="#141416" stroke-width="2"/>`;
+  const sw = [4, 3.4, 2.8, 2.2];
+  for(let i = 0; i < 4; i++)
+    s += `<line x1="${FB_TOP_X[i]}" y1="34" x2="${FB_BOT_X[i]}" y2="356" stroke="#d7d7d7" stroke-width="${sw[i]}" opacity="0.85" stroke-linecap="round"/>`;
+  s += `<rect x="104" y="27" width="152" height="15" rx="5" fill="#f3ead8" stroke="#d9cdb4" stroke-width="2"/>`;
+  const names = ['G','D','A','E'];
+  for(let i = 0; i < 4; i++)
+    s += `<text x="${FB_TOP_X[i]}" y="16" text-anchor="middle" class="fb-str">${names[i]}</text>`;
+  for(let f = 1; f <= 4; f++)
+    s += `<text x="94" y="${FB_ROWS[f]}" text-anchor="middle" dominant-baseline="central" class="fb-fnum">${f}</text>`;
+  for(let si = 0; si < 4; si++){
+    s += spotSVG(si, 0, mode, isCorrect);
+    for(let f = 1; f <= 4; f++) s += spotSVG(si, f, mode, isCorrect);
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" class="fb" id="fbSvg" role="img" aria-label="violin fingerboard">${s}</svg>`;
+}
+
 // ---------------- Helpers ----------------
 const app = document.getElementById('app');
 const sheet = document.getElementById('sheet');
@@ -145,7 +208,7 @@ function renderHome(){
     <div class="hero">
       <span class="mascot">🎻</span>
       <h1>Violin Sight Reading</h1>
-      <p>See a note. Name it. Own it.</p>
+      <p>See a note. Find it on the fingerboard.</p>
     </div>
     <div class="foot" style="margin-top:0">
       <button class="btn btn-green" id="continueBtn">Start practicing</button>
@@ -177,9 +240,8 @@ function renderHome(){
 let Q = null;
 function startRound(levelId, quick){
   const pool = quick ? unlockedNotes() : levelPool(LEVELS[levelId - 1]);
-  const labels = [...new Set(pool.map(k => NOTES[k].label))];
   Q = {
-    levelId, quick, pool, labels, idx:0, correct:0, xp:0, hearts:3,
+    levelId, quick, pool, idx:0, correct:0, xp:0, hearts:3,
     order: Array.from({length: ROUND_LEN}, () => pool[Math.floor(Math.random()*pool.length)]),
     picked:null, locked:false,
   };
@@ -187,9 +249,7 @@ function startRound(levelId, quick){
 }
 function renderQ(){
   hideSheet();
-  const key = Q.order[Q.idx], n = NOTES[key];
-  const distract = shuffle(Q.labels.filter(l => l !== n.label)).slice(0, 3);
-  const opts = shuffle([n.label, ...distract]);
+  const key = Q.order[Q.idx];
   Q.picked = null; Q.locked = false;
   app.innerHTML = `
     <div class="topbar">
@@ -197,46 +257,46 @@ function renderQ(){
       <div class="progress"><i id="pbar"></i></div>
       <div class="statbar" style="padding:0"><span class="s s-heart">❤️ ${Q.hearts}</span></div>
     </div>
-    <div class="q-prompt">What note is this?</div>
-    <p class="q-hint">Tap 🔊 to hear it</p>
+    <div class="q-prompt">Where do you play this note?</div>
+    <p class="q-hint">Tap a spot on the fingerboard · 🔊 to hear it</p>
     ${staffSVG(key)}
     <div class="listenrow"><button class="listen" id="hearBtn">🔊 Hear the note</button></div>
-    <div class="opts" id="opts">
-      ${opts.map(o => `<button class="opt" data-v="${o}">${o}</button>`).join('')}
-    </div>
+    <div id="fbWrap">${fingerboardSVG('quiz')}</div>
     <div class="foot"><button class="btn btn-green" id="checkBtn" disabled>Check</button></div>`;
   document.getElementById('pbar').style.width = (Q.idx / ROUND_LEN * 100) + '%';
   document.getElementById('quitBtn').onclick = renderHome;
   document.getElementById('hearBtn').onclick = () => playNote(key);
   const checkBtn = document.getElementById('checkBtn');
-  app.querySelectorAll('.opt').forEach(b => {
-    b.onclick = () => {
-      if(Q.locked) return;
-      app.querySelectorAll('.opt').forEach(x => x.classList.remove('sel'));
-      b.classList.add('sel');
-      Q.picked = b.dataset.v;
-      checkBtn.disabled = false;
-    };
+  document.getElementById('fbSvg').addEventListener('click', e => {
+    if(Q.locked) return;
+    const g = e.target.closest('.spot');
+    if(!g) return;
+    document.querySelectorAll('#fbSvg .spot').forEach(x => x.classList.remove('sel'));
+    g.classList.add('sel');
+    Q.picked = {s:+g.dataset.s, f:+g.dataset.f};
+    checkBtn.disabled = false;
   });
   checkBtn.onclick = grade;
 }
 function grade(){
-  if(Q.locked || Q.picked === null) return;
+  if(Q.locked || !Q.picked) return;
   Q.locked = true;
   const key = Q.order[Q.idx], n = NOTES[key];
-  const ok = Q.picked === n.label;
-  app.querySelectorAll('.opt').forEach(b => {
-    b.disabled = true;
-    if(b.dataset.v === n.label) b.classList.add('right');
-    else if(b.dataset.v === Q.picked) b.classList.add('wrong');
-  });
+  const okSpots = NOTE_SPOTS[key];
+  const ok = okSpots.some(c => c.s === Q.picked.s && c.f === Q.picked.f);
+  document.getElementById('fbWrap').innerHTML = fingerboardSVG('reveal', key);
+  if(!ok){
+    const g = document.querySelector(`#fbSvg .spot[data-s="${Q.picked.s}"][data-f="${Q.picked.f}"]`);
+    if(g) g.classList.add('wrong');
+  }
   document.getElementById('checkBtn').style.display = 'none';
+  const where = okSpots.map(c => spotName(c.s, c.f)).join(' or ');
   if(ok){
     Q.correct++; Q.xp += 10; S.xp += 10; sfxGood();
-    showSheet(true, 'Nicely done!', `+10 XP · ${n.label} on the ${n.step < 0 ? 'ledger lines below' : n.step > 8 ? 'top of the staff' : 'staff'}`);
+    showSheet(true, 'Nicely done!', `+10 XP · ${n.label} — ${spotName(Q.picked.s, Q.picked.f)}`);
   }else{
     Q.hearts--; sfxBad(); playNote(key);
-    showSheet(false, 'Not quite…', `That was <b>${n.label}</b>. Listen again and keep going!`);
+    showSheet(false, 'Not quite…', `That was <b>${n.label}</b> — play it ${where}.`);
   }
   saveS();
 }
@@ -320,10 +380,17 @@ function renderChart(){
     <div class="backrow"><button class="back" id="backBtn">‹</button><div class="q-prompt" style="margin:0">Note Chart</div></div>
     <p class="q-hint">Tap any note to hear it 🎧</p>
     ${secs}
+    <div class="section-t">🎻 Fingerboard</div>
+    <p class="q-hint">First position · tap any spot to hear it</p>
+    <div id="fbWrap">${fingerboardSVG('chart')}</div>
     <div class="foot"><button class="btn btn-ghost" id="homeBtn">Back home</button></div>`;
   document.getElementById('backBtn').onclick = renderHome;
   document.getElementById('homeBtn').onclick = renderHome;
   app.querySelectorAll('.ncard').forEach(c => { c.onclick = () => playNote(c.dataset.k); });
+  document.getElementById('fbSvg').addEventListener('click', e => {
+    const g = e.target.closest('.spot');
+    if(g) playNote(g.dataset.k);
+  });
   window.scrollTo(0, 0);
 }
 
