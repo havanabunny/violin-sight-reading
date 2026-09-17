@@ -149,10 +149,10 @@ function fingerboardSVG(mode, targetKey){
   const correct = targetKey ? (NOTE_SPOTS[targetKey] || []) : [];
   const isCorrect = (si, f) => correct.some(c => c.s === si && c.f === f);
   let s = `<defs><linearGradient id="fbGrad" x1="0" y1="0" x2="0" y2="1">`
-    + `<stop offset="0" stop-color="#3d3d42"/><stop offset="1" stop-color="#222226"/></linearGradient>`
+    + `<stop offset="0" stop-color="#4a3b2f"/><stop offset="1" stop-color="#241c15"/></linearGradient>`
     + `<linearGradient id="fbFade" x1="0" y1="0" x2="0" y2="1">`
     + `<stop offset="0" stop-color="#ffffff" stop-opacity="0"/><stop offset="1" stop-color="#ffffff" stop-opacity="1"/></linearGradient></defs>`;
-  s += `<path d="M108,40 L252,40 L276,360 L84,360 Z" fill="url(#fbGrad)" stroke="#141416" stroke-width="2"/>`;
+  s += `<path d="M108,40 L252,40 L276,360 L84,360 Z" fill="url(#fbGrad)" stroke="#100c09" stroke-width="2"/>`;
   const sw = [4, 3.4, 2.8, 2.2];
   for(let i = 0; i < 4; i++)
     s += `<line x1="${FB_TOP_X[i]}" y1="34" x2="${FB_BOT_X[i]}" y2="360" stroke="#d7d7d7" stroke-width="${sw[i]}" opacity="0.85" stroke-linecap="round"/>`;
