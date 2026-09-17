@@ -141,6 +141,29 @@ body{
 #confetti{position:fixed; inset:0; pointer-events:none; z-index:99; overflow:hidden;}
 .cf{position:absolute; top:-16px; width:10px; height:14px; border-radius:2px; animation:fall 2.8s ease-in forwards;}
 @keyframes fall{to{transform:translateY(112vh) rotate(720deg);}}
+/* ---------- print ---------- */
+.printbtn{background:#fff; border:2px solid var(--line); border-radius:12px; font-size:20px;
+  width:46px; height:46px; cursor:pointer; box-shadow:0 3px 0 var(--line); flex:none;}
+.printbtn:active{transform:translateY(3px); box-shadow:none;}
+.print-lvtitle{font-size:22px; font-weight:900; margin:20px 0 12px;}
+.print-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+.pcard{border:2px solid #2a231b; border-radius:12px; padding:10px 8px; background:#fff;
+  text-align:center; break-inside:avoid;}
+.pcard-name{font-size:24px; font-weight:900; margin-bottom:2px;}
+.pcard .staff{max-width:165px; margin:0 auto;}
+.pcard .fb{max-width:145px; margin:0 auto;}
+.print-spot circle.dot{fill:#fff; stroke:#2a231b; stroke-width:3.5;}
+@media print{
+  .noprint{display:none !important;}
+  body{background:#fff;}
+  #app{max-width:100%; padding:0; min-height:auto; display:block;}
+  .print-lvtitle{margin:0 0 10px; font-size:20px;}
+  .print-level{break-before:page;}
+  .print-level:first-child{break-before:avoid;}
+  .print-grid{gap:10px;}
+  .pcard{box-shadow:none; border-width:1.5px;}
+  @page{margin:0.4in;}
+}
 /* ---------- fingerboard ---------- */
 .fb{width:100%; max-width:min(400px,96vw); height:auto; display:block; margin:4px auto; touch-action:manipulation;}
 .fb-str{font-size:16px; font-weight:900; fill:#a89a86;}
