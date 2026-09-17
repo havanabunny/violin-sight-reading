@@ -74,18 +74,22 @@ function ac(){
   return AC;
 }
 function tone(freq, delay, dur, vol){
-  try{
-    const c = ac(), t = c.currentTime + (delay||0);
-    const o = c.createOscillator(), o2 = c.createOscillator();
-    const g = c.createGain(), g2 = c.createGain();
-    o.type = 'triangle'; o.frequency.value = freq;
-    o2.type = 'sine'; o2.frequency.value = freq * 2; g2.gain.value = 0.22;
-    o.connect(g); o2.connect(g2); g2.connect(g); g.connect(c.destination);
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol || 0.22, t + 0.03);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
-  }catch(e){}
+  const c = ac();
+  const go = () => {
+    try{
+      const t = c.currentTime + (delay || 0);
+      const o = c.createOscillator(), o2 = c.createOscillator();
+      const g = c.createGain(), g2 = c.createGain();
+      o.type = 'triangle'; o.frequency.value = freq;
+      o2.type = 'sine'; o2.frequency.value = freq * 2; g2.gain.value = 0.22;
+      o.connect(g); o2.connect(g2); g2.connect(g); g.connect(c.destination);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol || 0.22, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
+    }catch(e){}
+  };
+  if(c.state === 'suspended') c.resume().then(go).catch(go); else go();
 }
 function playNote(key){ tone(NOTES[key].freq, 0, 1.2, 0.24); }
 function sfxGood(){ tone(523.25, 0, .16, .18); tone(659.25, .09, .16, .18); tone(783.99, .18, .3, .2); }
@@ -257,8 +261,7 @@ function renderQ(){
       <div class="progress"><i id="pbar"></i></div>
       <div class="statbar" style="padding:0"><span class="s s-heart">❤️ ${Q.hearts}</span></div>
     </div>
-    ${staffSVG(key)}
-    <div class="listenrow"><button class="listen" id="hearBtn">🔊 Hear the note</button></div>
+    <div class="staffrow">${staffSVG(key)}<button class="hearbtn" id="hearBtn" aria-label="Hear the note">🔊</button></div>
     <div id="fbWrap">${fingerboardSVG('quiz')}</div>
     <div class="foot"><button class="btn btn-green" id="checkBtn" disabled>Check</button></div>`;
   document.getElementById('pbar').style.width = (Q.idx / ROUND_LEN * 100) + '%';
