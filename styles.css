@@ -48,7 +48,7 @@ body{
 .btn-blue:active{box-shadow:none;}
 .btn-ghost{background:none; border:none; box-shadow:none; color:var(--blue-dark); padding:12px;}
 .btn-ghost:active{transform:none; color:var(--blue);}
-.foot{margin-top:auto; padding-top:18px;}
+.foot{margin-top:auto; padding-top:8px; position:sticky; bottom:0; background:linear-gradient(transparent, #fff 35%); padding-bottom:calc(10px + env(safe-area-inset-bottom));}
 .foot .btn{margin-bottom:10px;}
 /* ---------- level cards ---------- */
 .lvl{
@@ -69,16 +69,16 @@ body{
 .section-t{font-size:20px; font-weight:900; margin:22px 0 12px;}
 .tip{color:var(--gray); font-size:13px; font-weight:700; text-align:center; margin-top:16px;}
 /* ---------- quiz ---------- */
-.q-prompt{font-size:22px; font-weight:900; margin:18px 0 4px;}
+.q-prompt{font-size:20px; font-weight:900; margin:8px 0 2px;}
 .q-hint{color:var(--gray); font-weight:700; font-size:14px; margin:0 0 6px;}
-.staff{width:100%; height:auto; display:block; margin:6px 0 2px;}
+.staff{width:100%; max-width:280px; height:auto; display:block; margin:2px auto;}
 .staff-line{stroke:#b9b9b9; stroke-width:2;}
 .ledger{stroke:var(--ink); stroke-width:2.5;}
 .stem{stroke:var(--ink); stroke-width:3.5; stroke-linecap:round;}
 .notehead{fill:var(--ink);}
 .clef{font-size:92px; fill:var(--ink); font-family:'Noto Music','Segoe UI Symbol','Apple Symbols',serif;}
 .acc{font-size:46px; font-weight:700; fill:var(--ink);}
-.listenrow{display:flex; justify-content:center; margin:2px 0 12px;}
+.listenrow{display:flex; justify-content:center; margin:2px 0 6px;}
 .listen{
   display:inline-flex; align-items:center; gap:8px; border:2px solid var(--line); background:#fff;
   border-radius:999px; padding:9px 20px; font-family:inherit; font-weight:900; font-size:15px; color:var(--blue-dark);
@@ -136,7 +136,7 @@ body{
 .cf{position:absolute; top:-16px; width:10px; height:14px; border-radius:2px; animation:fall 2.8s ease-in forwards;}
 @keyframes fall{to{transform:translateY(112vh) rotate(720deg);}}
 /* ---------- fingerboard ---------- */
-.fb{width:100%; max-width:340px; height:auto; display:block; margin:6px auto; touch-action:manipulation;}
+.fb{width:100%; max-width:min(300px,84vw); height:auto; display:block; margin:4px auto; touch-action:manipulation;}
 .fb-str{font-size:16px; font-weight:900; fill:#8e8e93;}
 .fb-fnum{font-size:14px; font-weight:800; fill:#aeaeb2;}
 .spot{cursor:pointer; -webkit-user-select:none; user-select:none;}
