@@ -263,23 +263,26 @@ function renderHome(){
 /* ---------- print ---------- */
 function renderPrint(){
   hideSheet();
-  const secs = LEVELS.map(lv => `
+  const build = answers => LEVELS.map((lv, li) => {
+    let q = 0;
+    return `
     <div class="print-level">
+      ${li === 0 && answers ? '<div class="print-sectitle">🔑 Answer Key</div>' : ''}
       <div class="print-lvtitle">${lv.icon} Level ${lv.id} · ${lv.title}</div>
-      <div class="print-grid">
-        ${levelPool(lv).map(k => `
-          <div class="pcard">
-            <div class="pcard-name">${NOTES[k].label}</div>
-            ${staffSVG(k)}
-            ${fingerboardSVG('print', k)}
-          </div>`).join('')}
-      </div>
-    </div>`).join('');
+      ${lv.notes.map(k => `
+        <div class="wq-row">
+          <div class="wq-num">${++q}.</div>
+          <div class="wq-staff">${staffSVG(k)}</div>
+          <div class="wq-board">${fingerboardSVG('print', answers ? k : null)}</div>
+        </div>`).join('')}
+    </div>`;
+  }).join('');
   app.innerHTML = `
     <div class="backrow noprint"><button class="back" id="backBtn">‹</button>
-      <div class="q-prompt" style="margin:0; flex:1;">Print Reference</div></div>
-    <p class="q-hint noprint">Ink-saver layout · each level starts on a new page</p>
-    ${secs}
+      <div class="q-prompt" style="margin:0; flex:1;">Quiz Worksheet</div></div>
+    <p class="q-hint noprint">Mark each note's spot on the fingerboard · answers at the end</p>
+    ${build(false)}
+    ${build(true)}
     <div class="foot noprint"><button class="btn btn-blue" id="doPrint">🖨 Print</button></div>`;
   document.getElementById('backBtn').onclick = renderChart;
   document.getElementById('doPrint').onclick = () => window.print();
