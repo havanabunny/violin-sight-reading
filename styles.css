@@ -189,3 +189,15 @@ body{
 .fb-halfline{stroke:#b3a48f; stroke-width:2;}
 .fb-half{font-size:12px; font-weight:800; fill:#b3a48f;}
 .fb-lab{font-size:13px; font-weight:900; fill:#2a231b; pointer-events:none;}
+
+/* ---------- melodies ---------- */
+.mel-title{font-size:22px; font-weight:900; text-align:center; margin:6px 0 2px; color:var(--ink);}
+.mchips{display:flex; gap:6px; overflow-x:auto; padding:10px 4px; margin:2px -4px 0; scrollbar-width:thin;}
+.mchip{flex:none; padding:8px 6px; border-radius:10px; background:#fff; border:2px solid var(--line);
+  font-weight:800; font-size:15px; text-align:center; color:var(--ink); transition:transform .15s, background .15s, opacity .15s;}
+.mchip.done{opacity:.38; background:#e7f6df; border-color:#cfe6c2;}
+.mchip.cur{border-color:var(--green); background:#eef9e5; transform:scale(1.12); box-shadow:0 3px 0 var(--green);}
+.hearbtn{width:46px; height:46px; border-radius:50%; background:#fff; border:2px solid var(--line);
+  font-size:16px; box-shadow:0 3px 0 var(--line); flex:none; cursor:pointer; color:var(--ink);}
+.hearbtn:active{transform:translateY(3px); box-shadow:none;}
+.hearbtn.playing{background:#eef9e5; border-color:var(--green); color:var(--green-dark);}
