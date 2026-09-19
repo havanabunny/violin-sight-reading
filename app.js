@@ -30,6 +30,27 @@ const LEVELS = [
 ];
 const ROUND_LEN = 10;
 
+// ---------------- Melodies ----------------
+// Simple public-domain tunes, 1–2 phrases each. [note key, beats].
+// All notes are in first position (G3–B5).
+const MELODIES = [
+  {id:'hcb', title:'Hot Cross Buns', icon:'🍞', desc:'3 notes · super easy', notes:[
+    ['E4',1],['D4',1],['C4',2],['E4',1],['D4',1],['C4',2],
+    ['C4',.5],['C4',.5],['C4',.5],['C4',.5],['D4',.5],['D4',.5],['D4',.5],['D4',.5],
+    ['E4',1],['D4',1],['C4',2]]},
+  {id:'mary', title:'Mary Had a Little Lamb', icon:'🐑', desc:'4 notes · classic', notes:[
+    ['E4',1],['D4',1],['C4',1],['D4',1],['E4',1],['E4',1],['E4',2],
+    ['D4',1],['D4',1],['D4',2],['E4',1],['G4',1],['G4',2],
+    ['E4',1],['D4',1],['C4',1],['D4',1],['E4',1],['E4',1],['E4',1],['E4',1],
+    ['D4',1],['D4',1],['E4',1],['D4',1],['C4',3]]},
+  {id:'twinkle', title:'Twinkle Twinkle', icon:'⭐', desc:'D major · 2 phrases', notes:[
+    ['D4',1],['D4',1],['A4',1],['A4',1],['B4',1],['B4',1],['A4',2],
+    ['G4',1],['G4',1],['Fs4',1],['Fs4',1],['E4',1],['E4',1],['D4',2]]},
+  {id:'ode', title:'Ode to Joy', icon:'🎆', desc:'E string · soaring', notes:[
+    ['E5',1],['E5',1],['Fs5',1],['G5',1],['G5',1],['Fs5',1],['E5',1],['D5',1],
+    ['Cs5',1],['Cs5',1],['D5',1],['E5',1],['E5',1.5],['D5',.5],['D5',2]]},
+];
+
 // ---------------- Fingerboard ----------------
 // Viewed as the player sees it: G string on the left, scroll at top.
 const STRINGS = [
@@ -73,25 +94,42 @@ function ac(){
   if(AC.state === 'suspended') AC.resume();
   return AC;
 }
+// Violin-ish voice: two detuned saws through a lowpass (bowed-string body),
+// soft bow attack, and a vibrato that fades in like a real left hand.
 function tone(freq, delay, dur, vol){
   const c = ac();
   const go = () => {
     try{
       const t = c.currentTime + (delay || 0);
-      const o = c.createOscillator(), o2 = c.createOscillator();
-      const g = c.createGain(), g2 = c.createGain();
-      o.type = 'triangle'; o.frequency.value = freq;
-      o2.type = 'sine'; o2.frequency.value = freq * 2; g2.gain.value = 0.22;
-      o.connect(g); o2.connect(g2); g2.connect(g); g.connect(c.destination);
+      const v = vol || 0.22;
+      const g = c.createGain();
+      const flt = c.createBiquadFilter();
+      flt.type = 'lowpass';
+      flt.frequency.value = Math.min(5200, Math.max(1800, freq * 6));
+      flt.Q.value = 0.6;
+      const o1 = c.createOscillator(), o2 = c.createOscillator(), sub = c.createOscillator();
+      o1.type = 'sawtooth'; o2.type = 'sawtooth'; sub.type = 'sine';
+      o1.frequency.value = freq; o2.frequency.value = freq; sub.frequency.value = freq / 2;
+      o1.detune.value = -5; o2.detune.value = 5;
+      const sg = c.createGain(); sg.gain.value = 0.22;
+      const lfo = c.createOscillator(), lg = c.createGain();
+      lfo.frequency.value = 5.5;
+      lg.gain.setValueAtTime(0.0001, t);
+      lg.gain.linearRampToValueAtTime(16, t + 0.5); // cents — blooms after the attack
+      lfo.connect(lg); lg.connect(o1.detune); lg.connect(o2.detune);
+      o1.connect(flt); o2.connect(flt); sub.connect(sg); sg.connect(flt);
+      flt.connect(g); g.connect(c.destination);
+      const a = 0.08, r = Math.min(0.35, dur * 0.3);
       g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(vol || 0.22, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(v, t + a);
+      g.gain.setValueAtTime(v, t + Math.max(a + 0.02, dur - r));
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
+      [o1, o2, sub, lfo].forEach(o => { o.start(t); o.stop(t + dur + 0.1); });
     }catch(e){}
   };
   if(c.state === 'suspended') c.resume().then(go).catch(go); else go();
 }
-function playNote(key){ tone(NOTES[key].freq, 0, 1.2, 0.24); }
+function playNote(key, dur){ tone(NOTES[key].freq, 0, dur || 1.4, 0.24); }
 function sfxGood(){ tone(523.25, 0, .16, .18); tone(659.25, .09, .16, .18); tone(783.99, .18, .3, .2); }
 function sfxBad(){ tone(196, 0, .22, .16); tone(147, .1, .32, .16); }
 
@@ -245,6 +283,11 @@ function renderHome(){
       <span class="lvl-tx"><b>Quick Practice</b><span>Mixed review · 10 notes</span></span>
       <span style="font-size:22px;color:#afafaf">›</span>
     </button>
+    <button class="lvl" id="melodyBtn">
+      <span class="lvl-ic">🎶</span>
+      <span class="lvl-tx"><b>Play Melodies</b><span>Twinkle, Ode to Joy &amp; more</span></span>
+      <span style="font-size:22px;color:#afafaf">›</span>
+    </button>
     <button class="lvl" id="chartBtn">
       <span class="lvl-ic">🗺️</span>
       <span class="lvl-tx"><b>Note Chart</b><span>See &amp; hear every note</span></span>
@@ -253,6 +296,7 @@ function renderHome(){
     <div class="tip">Tip: use Share → Add to Home Screen<br>to launch this like an app 🎻</div>`;
   document.getElementById('continueBtn').onclick = () => startRound(Math.min(S.unlocked, 4));
   document.getElementById('quickBtn').onclick = () => startRound(0, true);
+  document.getElementById('melodyBtn').onclick = renderMelodies;
   document.getElementById('chartBtn').onclick = renderChart;
   app.querySelectorAll('.lvl[data-lv]').forEach(b => {
     if(!b.disabled) b.onclick = () => startRound(parseInt(b.dataset.lv, 10));
@@ -442,6 +486,116 @@ function renderChart(){
     const g = e.target.closest('.spot');
     if(g) playNote(g.dataset.k);
   });
+  window.scrollTo(0, 0);
+}
+
+// ---------------- Melodies (digital-violin play mode) ----------------
+// Guided play: tap the matching spot to sound each note, piano-style.
+// M.misses is tracked silently — scoring/grading UI comes later.
+let M = null;
+function renderMelodies(){
+  hideSheet();
+  app.innerHTML = `
+    <div class="backrow"><button class="back" id="backBtn">‹</button>
+      <div class="q-prompt" style="margin:0; flex:1;">Play Melodies</div></div>
+    <p class="q-hint">Tap the matching spot to play each note 🎻</p>
+    ${MELODIES.map((m, i) => `
+      <button class="lvl" data-mi="${i}">
+        <span class="lvl-ic">${m.icon}</span>
+        <span class="lvl-tx"><b>${m.title}</b><span>${m.notes.length} notes · ${m.desc}</span></span>
+        <span style="font-size:22px;color:#afafaf">›</span>
+      </button>`).join('')}
+    <div class="foot"><button class="btn btn-ghost" id="homeBtn">Back home</button></div>`;
+  document.getElementById('backBtn').onclick = renderHome;
+  document.getElementById('homeBtn').onclick = renderHome;
+  app.querySelectorAll('.lvl[data-mi]').forEach(b => {
+    b.onclick = () => startMelody(parseInt(b.dataset.mi, 10));
+  });
+  window.scrollTo(0, 0);
+}
+function startMelody(i){
+  M = {i, idx:0, misses:0, demo:false};
+  renderMelody();
+}
+function renderMelody(){
+  hideSheet();
+  const mel = MELODIES[M.i], key = mel.notes[M.idx][0];
+  app.innerHTML = `
+    <div class="topbar">
+      <button class="xbtn" id="quitBtn">✕</button>
+      <div class="progress"><i id="pbar"></i></div>
+      <button class="hearbtn" id="hearBtn" aria-label="Hear the melody">▶</button>
+    </div>
+    <div class="mel-title">${mel.icon} ${mel.title}</div>
+    <div class="mchips" id="chips">
+      ${mel.notes.map(([k, b], ni) =>
+        `<div class="mchip${ni < M.idx ? ' done' : ni === M.idx ? ' cur' : ''}" style="min-width:${30 + 16 * b}px">${NOTES[k].label}</div>`).join('')}
+    </div>
+    ${staffSVG(key)}
+    <div id="fbWrap">${fingerboardSVG('quiz')}</div>`;
+  document.getElementById('pbar').style.width = (M.idx / mel.notes.length * 100) + '%';
+  document.getElementById('quitBtn').onclick = () => { M.demo = false; renderMelodies(); };
+  document.getElementById('hearBtn').onclick = demoMelody;
+  const cur = document.querySelector('.mchip.cur');
+  if(cur) cur.scrollIntoView({inline:'center', block:'nearest'});
+  document.getElementById('fbSvg').addEventListener('click', e => {
+    if(M.demo) return;
+    const g = e.target.closest('.spot');
+    if(!g) return;
+    const want = mel.notes[M.idx][0];
+    playNote(g.dataset.k);
+    const ok = NOTE_SPOTS[want].some(c => c.s === +g.dataset.s && c.f === +g.dataset.f);
+    if(ok){
+      g.classList.add('right');
+      M.idx++;
+      setTimeout(() => { M.idx >= mel.notes.length ? finishMelody() : renderMelody(); }, 260);
+    }else{
+      M.misses++;
+      g.classList.add('wrong');
+      setTimeout(() => g.classList.remove('wrong'), 450);
+    }
+  });
+  window.scrollTo(0, 0);
+}
+function demoMelody(){
+  if(M.demo) return;
+  M.demo = true;
+  const btn = document.getElementById('hearBtn');
+  if(btn) btn.classList.add('playing');
+  const beat = 0.52, gap = 0.03;
+  let t = 0.08;
+  MELODIES[M.i].notes.forEach(([k, b]) => {
+    tone(NOTES[k].freq, t, b * beat * 0.94, 0.22);
+    t += b * beat + gap;
+  });
+  setTimeout(() => {
+    M.demo = false;
+    const b2 = document.getElementById('hearBtn');
+    if(b2) b2.classList.remove('playing');
+  }, t * 1000 + 400);
+}
+function finishMelody(){
+  hideSheet();
+  const mel = MELODIES[M.i];
+  S.xp += 15; saveS(); bumpStreak(); confetti();
+  app.innerHTML = `
+    <div class="result">
+      <div class="big">🎶</div>
+      <h2>Beautiful!</h2>
+      <p class="sub">You played <b>${mel.title}</b> — ${mel.notes.length} notes</p>
+      <div class="statgrid">
+        <div class="statcard"><b>+15</b><span>XP</span></div>
+        <div class="statcard"><b>${mel.notes.length}</b><span>Notes</span></div>
+      </div>
+      <div class="foot">
+        <button class="btn btn-green" id="againBtn">Play again</button>
+        <button class="btn btn-blue" id="listBtn">More melodies</button>
+        <button class="btn btn-ghost" id="homeBtn">Back home</button>
+      </div>
+    </div>`;
+  document.getElementById('againBtn').onclick = () => startMelody(M.i);
+  document.getElementById('listBtn').onclick = renderMelodies;
+  document.getElementById('homeBtn').onclick = renderHome;
   window.scrollTo(0, 0);
 }
 
