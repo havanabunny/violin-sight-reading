@@ -88,17 +88,54 @@ function bumpStreak(){
 }
 
 // ---------------- Audio ----------------
+// iOS no-sound post-mortem (the assumptions that were wrong):
+//  1. A bare resume() inside a click handler is NOT enough on iOS — it wants an
+//     actual buffer played inside a real user gesture to unlock the context.
+//  2. iOS has a non-standard 'interrupted' state, so checking only
+//     state === 'suspended' misses cases. Check state !== 'running'.
+//  3. Pure Web Audio uses the 'ambient' audio session, which the ring/silent
+//     switch mutes. navigator.audioSession.type='playback' (iOS 16.4+) opts out.
 let AC = null;
 function ac(){
-  if(!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
-  if(AC.state === 'suspended') AC.resume();
+  if(!AC){
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if(!Ctx) return null;
+    AC = new Ctx();
+  }
+  try{ if(navigator.audioSession) navigator.audioSession.type = 'playback'; }catch(e){}
   return AC;
 }
+function unlockAudio(){
+  const c = ac();
+  if(!c) return Promise.resolve(false);
+  try{ if(navigator.audioSession) navigator.audioSession.type = 'playback'; }catch(e){}
+  if(c.state === 'running') return Promise.resolve(true);
+  return new Promise(resolve => {
+    let done = false;
+    const fin = () => { if(!done){ done = true; resolve(c.state === 'running'); } };
+    try{
+      const pr = c.resume();
+      try{ // silent-buffer unlock: the thing iOS actually respects
+        const buf = c.createBuffer(1, 1, 22050);
+        const src = c.createBufferSource();
+        src.buffer = buf; src.connect(c.destination); src.start(0);
+      }catch(e){}
+      if(pr && pr.then) pr.then(fin).catch(fin); else setTimeout(fin, 300);
+    }catch(e){ fin(); }
+    setTimeout(fin, 900); // safety net
+  });
+}
+// Retry the unlock on every gesture until iOS lets it run; re-unlock on return
+// from background (iOS re-suspends contexts then).
+['pointerdown','touchend','keydown'].forEach(ev =>
+  document.addEventListener(ev, () => { unlockAudio(); }, {passive:true}));
+document.addEventListener('visibilitychange', () => { if(!document.hidden) unlockAudio(); });
 // Violin-ish voice: two detuned saws through a lowpass (bowed-string body),
 // soft bow attack, and a vibrato that fades in like a real left hand.
 function tone(freq, delay, dur, vol){
-  const c = ac();
-  const go = () => {
+  unlockAudio().then(ok => {
+    const c = AC;
+    if(!ok || !c || c.state !== 'running') return; // never schedule on a dead context
     try{
       const t = c.currentTime + (delay || 0);
       const v = vol || 0.22;
@@ -126,8 +163,7 @@ function tone(freq, delay, dur, vol){
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       [o1, o2, sub, lfo].forEach(o => { o.start(t); o.stop(t + dur + 0.1); });
     }catch(e){}
-  };
-  if(c.state === 'suspended') c.resume().then(go).catch(go); else go();
+  });
 }
 function playNote(key, dur){ tone(NOTES[key].freq, 0, dur || 1.4, 0.24); }
 function sfxGood(){ tone(523.25, 0, .16, .18); tone(659.25, .09, .16, .18); tone(783.99, .18, .3, .2); }
@@ -293,11 +329,26 @@ function renderHome(){
       <span class="lvl-tx"><b>Note Chart</b><span>See &amp; hear every note</span></span>
       <span style="font-size:22px;color:#afafaf">›</span>
     </button>
-    <div class="tip">Tip: use Share → Add to Home Screen<br>to launch this like an app 🎻</div>`;
+    <div class="tip">Tip: use Share → Add to Home Screen<br>to launch this like an app 🎻</div>
+    <button class="sndtest" id="sndTest">🔊 Test sound</button>
+    <div class="sndstat" id="sndStat"></div>`;
   document.getElementById('continueBtn').onclick = () => startRound(Math.min(S.unlocked, 4));
   document.getElementById('quickBtn').onclick = () => startRound(0, true);
   document.getElementById('melodyBtn').onclick = renderMelodies;
   document.getElementById('chartBtn').onclick = renderChart;
+  document.getElementById('sndTest').onclick = () => {
+    const st = document.getElementById('sndStat');
+    st.textContent = 'Unlocking audio…';
+    unlockAudio().then(ok => {
+      const state = AC ? AC.state : 'unsupported';
+      if(ok && AC && AC.state === 'running'){
+        tone(523.25, 0, .16, .22); tone(659.25, .15, .16, .22); tone(783.99, .3, .4, .24);
+        st.textContent = 'Playing — did you hear three notes? (state: running)';
+      }else{
+        st.textContent = 'Audio is ' + state + '. Turn the silent switch OFF, raise the volume, then tap again.';
+      }
+    });
+  };
   app.querySelectorAll('.lvl[data-lv]').forEach(b => {
     if(!b.disabled) b.onclick = () => startRound(parseInt(b.dataset.lv, 10));
   });
