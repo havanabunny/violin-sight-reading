@@ -121,31 +121,52 @@ function ac(){
   try{ if(navigator.audioSession) navigator.audioSession.type = 'playback'; }catch(e){}
   return AC;
 }
-function unlockAudio(){
-  const c = ac();
-  if(!c) return Promise.resolve(false);
+function setPlayback(){
   try{ if(navigator.audioSession) navigator.audioSession.type = 'playback'; }catch(e){}
+}
+function silentPing(c){ // the thing iOS actually respects: a real buffer started in a gesture
+  try{
+    const buf = c.createBuffer(1, 1, 22050);
+    const src = c.createBufferSource();
+    src.buffer = buf; src.connect(c.destination); src.start(0);
+  }catch(e){}
+}
+// ensureAudio: the single unlock path behind every sound in the app.
+// iOS often needs resume() more than once — the first promise can settle
+// while state is still 'suspended', and a tap's own unlock can race the
+// document-level one. So instead of one shot that silently drops the note,
+// we retry briefly until the context is truly running.
+function ensureAudio(){
+  const c = ac();
+  setPlayback();
+  if(!c) return Promise.resolve(false);
   if(c.state === 'running') return Promise.resolve(true);
+  return attemptUnlock(c, 0);
+}
+function attemptUnlock(c, n){
   return new Promise(resolve => {
     let done = false;
-    const fin = () => { if(!done){ done = true; resolve(c.state === 'running'); } };
+    const fin = () => {
+      if(done) return; done = true;
+      setTimeout(() => resolve(c.state === 'running'), 70); // let iOS flip state
+    };
     try{
+      silentPing(c);
       const pr = c.resume();
-      try{ // silent-buffer unlock: the thing iOS actually respects
-        const buf = c.createBuffer(1, 1, 22050);
-        const src = c.createBufferSource();
-        src.buffer = buf; src.connect(c.destination); src.start(0);
-      }catch(e){}
-      if(pr && pr.then) pr.then(fin).catch(fin); else setTimeout(fin, 300);
+      if(pr && pr.then) pr.then(fin).catch(fin); else setTimeout(fin, 250);
     }catch(e){ fin(); }
-    setTimeout(fin, 900); // safety net
+    setTimeout(fin, 650);
+  }).then(ok => {
+    if(ok || n >= 2) return ok;
+    return new Promise(r => setTimeout(r, 160)).then(() => attemptUnlock(c, n + 1));
   });
 }
-// Retry the unlock on every gesture until iOS lets it run; re-unlock on return
+function unlockAudio(){ return ensureAudio(); } // alias: the home test button uses this name
+// Keep trying on every gesture until iOS lets it run; re-unlock on return
 // from background (iOS re-suspends contexts then).
 ['pointerdown','touchend','keydown'].forEach(ev =>
-  document.addEventListener(ev, () => { unlockAudio(); }, {passive:true}));
-document.addEventListener('visibilitychange', () => { if(!document.hidden) unlockAudio(); });
+  document.addEventListener(ev, () => { ensureAudio(); }, {passive:true}));
+document.addEventListener('visibilitychange', () => { if(!document.hidden) ensureAudio(); });
 // Violin-ish voice: two detuned saws through a lowpass (bowed-string body),
 // soft bow attack, and a vibrato that fades in like a real left hand.
 //
@@ -200,7 +221,20 @@ function cutPreview(){
 function withAudio(fn){
   const c = AC;
   if(c && c.state === 'running'){ try{ fn(c); }catch(e){} return; }
-  unlockAudio().then(ok => { if(ok && AC && AC.state === 'running'){ try{ fn(AC); }catch(e){} } });
+  ensureAudio().then(ok => {
+    if(ok && AC && AC.state === 'running'){ try{ fn(AC); }catch(e){} }
+    else nudgeAudio(); // don't fail silently: tell the user once what's wrong
+  });
+}
+let audioNudged = false;
+function nudgeAudio(){
+  if(audioNudged) return; audioNudged = true;
+  const t = document.createElement('div');
+  t.className = 'toast show';
+  t.textContent = '🔇 No sound — check the silent switch & volume, or tap 🔊 Test sound on the home screen.';
+  t.onclick = () => t.remove();
+  document.body.appendChild(t);
+  setTimeout(() => { t.remove(); }, 6000);
 }
 function tone(freq, delay, dur, vol){
   withAudio(c => scheduleNote(c, c.currentTime + 0.02 + (delay || 0), freq, dur || 1.4, vol || 0.24));
@@ -670,6 +704,7 @@ function demoMelody(){
   let started = false;
   withAudio(c => {
     started = true;
+    cutPreview();
     // one clock for the whole phrase: absolute note times, no per-note drift
     const t0 = c.currentTime + 0.08;
     let t = 0;
