@@ -201,3 +201,9 @@ body{
   font-size:16px; box-shadow:0 3px 0 var(--line); flex:none; cursor:pointer; color:var(--ink);}
 .hearbtn:active{transform:translateY(3px); box-shadow:none;}
 .hearbtn.playing{background:#eef9e5; border-color:var(--green); color:var(--green-dark);}
+
+/* ---------- sound test ---------- */
+.sndtest{background:none; border:none; color:var(--gray); font-size:14px; font-weight:700;
+  margin-top:8px; cursor:pointer; padding:6px 12px;}
+.sndstat{font-size:13px; color:var(--gray); min-height:20px; margin-top:2px;
+  text-align:center; padding:0 28px;}
