@@ -132,42 +132,78 @@ function unlockAudio(){
 document.addEventListener('visibilitychange', () => { if(!document.hidden) unlockAudio(); });
 // Violin-ish voice: two detuned saws through a lowpass (bowed-string body),
 // soft bow attack, and a vibrato that fades in like a real left hand.
-function tone(freq, delay, dur, vol){
-  unlockAudio().then(ok => {
-    const c = AC;
-    if(!ok || !c || c.state !== 'running') return; // never schedule on a dead context
+//
+// Timing model: scheduleNote() is pure and synchronous — t is one absolute
+// context time. withAudio() runs the callback synchronously when the context
+// is already running (deterministic starts inside gestures) and only waits
+// for the iOS unlock when it must.
+function scheduleNote(c, t, freq, dur, vol){
+  const v = vol || 0.22;
+  const g = c.createGain();
+  const flt = c.createBiquadFilter();
+  flt.type = 'lowpass';
+  flt.frequency.value = Math.min(5200, Math.max(1800, freq * 6));
+  flt.Q.value = 0.6;
+  const o1 = c.createOscillator(), o2 = c.createOscillator(), sub = c.createOscillator();
+  o1.type = 'sawtooth'; o2.type = 'sawtooth'; sub.type = 'sine';
+  o1.frequency.value = freq; o2.frequency.value = freq; sub.frequency.value = freq / 2;
+  o1.detune.value = -5; o2.detune.value = 5;
+  const sg = c.createGain(); sg.gain.value = 0.22;
+  const lfo = c.createOscillator(), lg = c.createGain();
+  lfo.frequency.value = 5.5;
+  lg.gain.setValueAtTime(0.0001, t);
+  lg.gain.linearRampToValueAtTime(16, t + 0.5); // cents — blooms after the attack
+  lfo.connect(lg); lg.connect(o1.detune); lg.connect(o2.detune);
+  o1.connect(flt); o2.connect(flt); sub.connect(sg); sg.connect(flt);
+  flt.connect(g); g.connect(c.destination);
+  const a = 0.08, r = Math.min(0.35, dur * 0.3);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(v, t + a);
+  g.gain.setValueAtTime(v, t + Math.max(a + 0.02, dur - r));
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  const nodes = [o1, o2, sub, lfo];
+  nodes.forEach(o => { o.start(t); o.stop(t + dur + 0.1); });
+  return {g, nodes};
+}
+// Preview voices: tapping a new spot cuts the previous preview with a fast
+// fade so rapid taps never pile into a muddy drone.
+let previewVoices = [];
+function cutPreview(){
+  const c = AC;
+  if(!c){ previewVoices = []; return; }
+  const t = c.currentTime;
+  previewVoices.forEach(v => {
     try{
-      const t = c.currentTime + (delay || 0);
-      const v = vol || 0.22;
-      const g = c.createGain();
-      const flt = c.createBiquadFilter();
-      flt.type = 'lowpass';
-      flt.frequency.value = Math.min(5200, Math.max(1800, freq * 6));
-      flt.Q.value = 0.6;
-      const o1 = c.createOscillator(), o2 = c.createOscillator(), sub = c.createOscillator();
-      o1.type = 'sawtooth'; o2.type = 'sawtooth'; sub.type = 'sine';
-      o1.frequency.value = freq; o2.frequency.value = freq; sub.frequency.value = freq / 2;
-      o1.detune.value = -5; o2.detune.value = 5;
-      const sg = c.createGain(); sg.gain.value = 0.22;
-      const lfo = c.createOscillator(), lg = c.createGain();
-      lfo.frequency.value = 5.5;
-      lg.gain.setValueAtTime(0.0001, t);
-      lg.gain.linearRampToValueAtTime(16, t + 0.5); // cents — blooms after the attack
-      lfo.connect(lg); lg.connect(o1.detune); lg.connect(o2.detune);
-      o1.connect(flt); o2.connect(flt); sub.connect(sg); sg.connect(flt);
-      flt.connect(g); g.connect(c.destination);
-      const a = 0.08, r = Math.min(0.35, dur * 0.3);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(v, t + a);
-      g.gain.setValueAtTime(v, t + Math.max(a + 0.02, dur - r));
-      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      [o1, o2, sub, lfo].forEach(o => { o.start(t); o.stop(t + dur + 0.1); });
+      v.g.gain.cancelScheduledValues(t);
+      v.g.gain.setTargetAtTime(0.0001, t, 0.02);
+      v.nodes.forEach(o => { try{ o.stop(t + 0.15); }catch(e){} });
     }catch(e){}
   });
+  previewVoices = [];
 }
-function playNote(key, dur){ tone(NOTES[key].freq, 0, dur || 1.4, 0.24); }
-function sfxGood(){ tone(523.25, 0, .16, .18); tone(659.25, .09, .16, .18); tone(783.99, .18, .3, .2); }
-function sfxBad(){ tone(196, 0, .22, .16); tone(147, .1, .32, .16); }
+function withAudio(fn){
+  const c = AC;
+  if(c && c.state === 'running'){ try{ fn(c); }catch(e){} return; }
+  unlockAudio().then(ok => { if(ok && AC && AC.state === 'running'){ try{ fn(AC); }catch(e){} } });
+}
+function tone(freq, delay, dur, vol){
+  withAudio(c => scheduleNote(c, c.currentTime + 0.02 + (delay || 0), freq, dur || 1.4, vol || 0.24));
+}
+function previewNote(key){ // user tapping a spot: always cuts the previous preview
+  withAudio(c => {
+    cutPreview();
+    previewVoices.push(scheduleNote(c, c.currentTime + 0.02, NOTES[key].freq, 1.4, 0.24));
+  });
+}
+function playNote(key, dur){ tone(NOTES[key].freq, 0, dur, 0.24); }
+function jingle(list){ // one unlock, one clock: absolutely-timed little sequences
+  withAudio(c => {
+    const t0 = c.currentTime + 0.03;
+    list.forEach(n => scheduleNote(c, t0 + n[1], n[0], n[2], n[3]));
+  });
+}
+function sfxGood(){ jingle([[523.25,0,.16,.18],[659.25,.09,.16,.18],[783.99,.18,.3,.2]]); }
+function sfxBad(){ jingle([[196,0,.22,.16],[147,.1,.32,.16]]); }
 
 // ---------------- Notation (SVG) ----------------
 function staffSVG(key){
@@ -419,7 +455,7 @@ function renderQ(){
     g.classList.add('sel');
     Q.picked = {s:+g.dataset.s, f:+g.dataset.f};
     checkBtn.disabled = false;
-    playNote(g.dataset.k);
+    previewNote(g.dataset.k);
   });
   checkBtn.onclick = grade;
 }
@@ -437,10 +473,10 @@ function grade(){
   document.getElementById('checkBtn').style.display = 'none';
   const where = okSpots.map(c => spotName(c.s, c.f)).join(' or ');
   if(ok){
-    Q.correct++; Q.xp += 10; S.xp += 10; sfxGood();
+    Q.correct++; Q.xp += 10; S.xp += 10; cutPreview(); sfxGood();
     showSheet(true, 'Nicely done!', `+10 XP · ${n.label} — ${spotName(Q.picked.s, Q.picked.f)}`);
   }else{
-    Q.hearts--; sfxBad(); playNote(key);
+    Q.hearts--; cutPreview(); sfxBad(); playNote(key);
     showSheet(false, 'Not quite…', `That was <b>${n.label}</b> — play it ${where}.`);
   }
   saveS();
@@ -532,10 +568,10 @@ function renderChart(){
   document.getElementById('backBtn').onclick = renderHome;
   document.getElementById('homeBtn').onclick = renderHome;
   document.getElementById('printBtn').onclick = renderPrint;
-  app.querySelectorAll('.ncard').forEach(c => { c.onclick = () => playNote(c.dataset.k); });
+  app.querySelectorAll('.ncard').forEach(c => { c.onclick = () => previewNote(c.dataset.k); });
   document.getElementById('fbSvg').addEventListener('click', e => {
     const g = e.target.closest('.spot');
-    if(g) playNote(g.dataset.k);
+    if(g) previewNote(g.dataset.k);
   });
   window.scrollTo(0, 0);
 }
@@ -594,7 +630,7 @@ function renderMelody(){
     const g = e.target.closest('.spot');
     if(!g) return;
     const want = mel.notes[M.idx][0];
-    playNote(g.dataset.k);
+    previewNote(g.dataset.k); // every tap sounds, like a real instrument
     const ok = NOTE_SPOTS[want].some(c => c.s === +g.dataset.s && c.f === +g.dataset.f);
     if(ok){
       g.classList.add('right');
@@ -614,16 +650,26 @@ function demoMelody(){
   const btn = document.getElementById('hearBtn');
   if(btn) btn.classList.add('playing');
   const beat = 0.52, gap = 0.03;
-  let t = 0.08;
-  MELODIES[M.i].notes.forEach(([k, b]) => {
-    tone(NOTES[k].freq, t, b * beat * 0.94, 0.22);
-    t += b * beat + gap;
+  const notes = MELODIES[M.i].notes;
+  let started = false;
+  withAudio(c => {
+    started = true;
+    // one clock for the whole phrase: absolute note times, no per-note drift
+    const t0 = c.currentTime + 0.08;
+    let t = 0;
+    notes.forEach(([k, b]) => {
+      scheduleNote(c, t0 + t, NOTES[k].freq, b * beat * 0.94, 0.22);
+      t += b * beat + gap;
+    });
+    setTimeout(() => {
+      M.demo = false;
+      const b2 = document.getElementById('hearBtn');
+      if(b2) b2.classList.remove('playing');
+    }, t * 1000 + 400);
   });
-  setTimeout(() => {
-    M.demo = false;
-    const b2 = document.getElementById('hearBtn');
-    if(b2) b2.classList.remove('playing');
-  }, t * 1000 + 400);
+  setTimeout(() => { // unlock failed: don't leave the button stuck
+    if(!started){ M.demo = false; if(btn) btn.classList.remove('playing'); }
+  }, 1500);
 }
 function finishMelody(){
   hideSheet();
