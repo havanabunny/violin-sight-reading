@@ -80,9 +80,22 @@ const PIANO_PIECES = [
   {id:'chopin-em', title:'Prelude in E minor', sub:'Chopin · Op. 28 No. 4', icon:'🎹',
    desc:'simplified starter · the famous opening descent', notes:[
     ['B4',2],['As4',2],['A4',2],['Gs4',2],['G4',2],['Fs4',2],['F4',2],['E4',4]]},
+  {id:'amazing', title:'Amazing Grace', sub:'Traditional hymn · 1835', icon:'⛪',
+   desc:'easy & uplifting · simplified', notes:[
+    ['C4',1],['F4',2],['A4',1],['F4',1],['A4',2],['G4',1],['F4',3],
+    ['D4',1],['F4',2],['A4',1],['F4',1],['D4',3]]},
+  {id:'jesus-loves', title:'Jesus Loves Me', sub:'Traditional hymn · 1862', icon:'🙏',
+   desc:'the classic kids’ favorite · simplified', notes:[
+    ['C4',1],['C4',1],['D4',1],['E4',1],['C4',2],
+    ['C4',1],['C4',1],['D4',1],['E4',1],['C4',3],
+    ['G4',1],['G4',1],['A4',1],['G4',2],['E4',1],['C4',3]]},
+  {id:'whole-world', title:'He’s Got the Whole World', sub:'Traditional spiritual', icon:'🌍',
+   desc:'pentatonic · super easy · fun', notes:[
+    ['G4',1],['A4',1],['G4',2],['F4',1],['E4',1],['D4',2],['C4',3],
+    ['E4',1],['F4',1],['E4',1],['D4',1],['C4',3]]},
 ];
 // note key -> MIDI number (middle C = 60)
-const NOTE_MIDI = {E4:64, F4:65, Fs4:66, G4:67, Gs4:68, A4:69, As4:70, B4:71};
+const NOTE_MIDI = {C4:60, D4:62, E4:64, F4:65, Fs4:66, G4:67, Gs4:68, A4:69, As4:70, B4:71};
 const MIDI_KEY = {};
 Object.keys(NOTE_MIDI).forEach(k => { MIDI_KEY[NOTE_MIDI[k]] = k; });
 function midiFreq(m){ return 440 * Math.pow(2, (m - 69) / 12); }
