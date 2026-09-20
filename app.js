@@ -8,10 +8,14 @@ const NOTES = {
   B3:{label:'B',  freq:246.94, step:-3},
   C4:{label:'C',  freq:261.63, step:-2},
   D4:{label:'D',  freq:293.66, step:-1},
+  Ds4:{label:'D♯', freq:311.13, step:-1,  acc:true},
   E4:{label:'E',  freq:329.63, step:0},
+  F4:{label:'F',  freq:349.23, step:1},
   Fs4:{label:'F♯', freq:369.99, step:1,  acc:true},
   G4:{label:'G',  freq:392.00, step:2},
+  Gs4:{label:'G♯', freq:415.30, step:2,  acc:true},
   A4:{label:'A',  freq:440.00, step:3},
+  As4:{label:'A♯', freq:466.16, step:3,  acc:true},
   B4:{label:'B',  freq:493.88, step:4},
   Cs5:{label:'C♯', freq:554.37, step:5,  acc:true},
   D5:{label:'D',  freq:587.33, step:6},
@@ -66,6 +70,26 @@ const MELODIES = [
     ['D5',1],['D5',1],['D5',1],['Cs5',1],['B4',1],['D5',2],
     ['B4',1],['Cs5',1],['D5',1],['Cs5',1],['Cs5',1],['Cs5',1],['B4',1],['A4',1],['Cs5',2]]},
 ];
+
+// ---------------- Piano ----------------
+// Beginner piano corner: simplified public-domain starters, playable with a
+// MIDI keyboard (Web MIDI) or the on-screen keys. Chopin died in 1849, so his
+// music is public domain; the reduction below is our own simplified teaching
+// version of the famous opening descent.
+const PIANO_PIECES = [
+  {id:'chopin-em', title:'Prelude in E minor', sub:'Chopin · Op. 28 No. 4', icon:'🎹',
+   desc:'simplified starter · the famous opening descent', notes:[
+    ['B4',2],['As4',2],['A4',2],['Gs4',2],['G4',2],['Fs4',2],['F4',2],['E4',4]]},
+];
+// note key -> MIDI number (middle C = 60)
+const NOTE_MIDI = {E4:64, F4:65, Fs4:66, G4:67, Gs4:68, A4:69, As4:70, B4:71};
+const MIDI_KEY = {};
+Object.keys(NOTE_MIDI).forEach(k => { MIDI_KEY[NOTE_MIDI[k]] = k; });
+function midiFreq(m){ return 440 * Math.pow(2, (m - 69) / 12); }
+function midiLabel(m){
+  const names = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+  return names[m % 12] + (Math.floor(m / 12) - 1);
+}
 
 // ---------------- Fingerboard ----------------
 // Viewed as the player sees it: G string on the left, scroll at top.
@@ -410,6 +434,11 @@ function renderHome(){
       <span class="lvl-tx"><b>Play Melodies</b><span>Twinkle, Ode to Joy &amp; more</span></span>
       <span style="font-size:22px;color:#afafaf">›</span>
     </button>
+    <button class="lvl" id="pianoBtn">
+      <span class="lvl-ic">🎹</span>
+      <span class="lvl-tx"><b>Piano</b><span>Chopin starter · MIDI keyboard</span></span>
+      <span style="font-size:22px;color:#afafaf">›</span>
+    </button>
     <button class="lvl" id="chartBtn">
       <span class="lvl-ic">🗺️</span>
       <span class="lvl-tx"><b>Note Chart</b><span>See &amp; hear every note</span></span>
@@ -421,6 +450,7 @@ function renderHome(){
   document.getElementById('continueBtn').onclick = () => startRound(Math.min(S.unlocked, 4));
   document.getElementById('quickBtn').onclick = () => startRound(0, true);
   document.getElementById('melodyBtn').onclick = renderMelodies;
+  document.getElementById('pianoBtn').onclick = renderPiano;
   document.getElementById('chartBtn').onclick = renderChart;
   document.getElementById('sndTest').onclick = () => {
     const st = document.getElementById('sndStat');
@@ -743,6 +773,190 @@ function finishMelody(){
     </div>`;
   document.getElementById('againBtn').onclick = () => startMelody(M.i);
   document.getElementById('listBtn').onclick = renderMelodies;
+  document.getElementById('homeBtn').onclick = renderHome;
+  window.scrollTo(0, 0);
+}
+
+// ---------------- Piano mode ----------------
+// Guided tap-to-play for piano: on-screen keys + real MIDI keyboard input.
+// P.misses is tracked silently — scoring/grading UI comes later.
+let P = null, midiAccess = null;
+function renderPiano(){
+  hideSheet();
+  P = null; // leaving any session: MIDI keys free-play only from here
+  app.innerHTML = `
+    <div class="backrow"><button class="back" id="backBtn">‹</button>
+      <div class="q-prompt" style="margin:0; flex:1;">Piano</div></div>
+    <p class="q-hint">Plug in a MIDI keyboard — or just tap the keys 🎹</p>
+    <div class="midirow">
+      <button class="btn btn-blue" id="midiBtn">🎹 Connect MIDI keyboard</button>
+      <div class="sndstat" id="midiStat"></div>
+    </div>
+    <div class="section-t">Start here</div>
+    ${PIANO_PIECES.map((p, i) => `
+      <button class="lvl" data-pi="${i}">
+        <span class="lvl-ic">${p.icon}</span>
+        <span class="lvl-tx"><b>${p.title}</b><span>${p.sub} · ${p.desc}</span></span>
+        <span style="font-size:22px;color:#afafaf">›</span>
+      </button>`).join('')}
+    <p class="q-hint">More pieces soon — violin and piano will get their own sections later.</p>
+    <div class="foot"><button class="btn btn-ghost" id="homeBtn">Back home</button></div>`;
+  document.getElementById('backBtn').onclick = renderHome;
+  document.getElementById('homeBtn').onclick = renderHome;
+  document.getElementById('midiBtn').onclick = connectMIDI;
+  app.querySelectorAll('.lvl[data-pi]').forEach(b => {
+    b.onclick = () => startPiano(parseInt(b.dataset.pi, 10));
+  });
+  window.scrollTo(0, 0);
+}
+function midiStatus(msg){
+  const el = document.getElementById('midiStat');
+  if(el) el.textContent = msg;
+}
+function connectMIDI(){
+  if(!navigator.requestMIDIAccess){
+    midiStatus('⚠️ This browser can’t do MIDI (iPhone/iPad browsers don’t support it). The on-screen keys below work the same.');
+    return;
+  }
+  midiStatus('Requesting MIDI access…');
+  navigator.requestMIDIAccess({sysex:false}).then(access => {
+    midiAccess = access;
+    const hook = () => {
+      const ins = [...access.inputs.values()];
+      ins.forEach(inp => { inp.onmidimessage = onMIDIMessage; });
+      midiStatus(ins.length
+        ? '✅ Connected: ' + ins.map(i => i.name || 'MIDI keyboard').join(', ')
+        : 'No MIDI keyboard found — plug one in, then tap Connect again.');
+    };
+    hook();
+    access.onstatechange = hook;
+  }).catch(() => midiStatus('MIDI access was blocked. The on-screen keys below work fine.'));
+}
+function onMIDIMessage(ev){
+  const d = ev.data || [];
+  if((d[0] & 0xF0) === 0x90 && d[2] > 0) pianoInput(d[1], 'midi'); // note-on only
+}
+function startPiano(i){
+  P = {i, idx:0, misses:0, demo:false};
+  renderPianoPlay();
+}
+function pianoKeysHTML(){
+  // one octave C4–B4 (MIDI 60–71); black keys absolutely positioned
+  const whites = [60, 62, 64, 65, 67, 69, 71];
+  const blackAfter = {61:1, 63:2, 66:4, 68:5, 70:6}; // white index the black key follows
+  const w = 100 / 7, bw = 9;
+  let h = '<div class="pkeys" id="pkeys">';
+  whites.forEach(m => {
+    h += `<div class="pk-white" data-m="${m}"><span>${midiLabel(m).replace(/[0-9]/g, '')}</span></div>`;
+  });
+  Object.keys(blackAfter).forEach(ms => {
+    const m = +ms, left = (blackAfter[m] * w) - bw / 2;
+    h += `<div class="pk-black" data-m="${m}" style="left:${left}%"><span>${midiLabel(m).replace(/[0-9]/g, '')}</span></div>`;
+  });
+  return h + '</div>';
+}
+function renderPianoPlay(){
+  hideSheet();
+  const pc = PIANO_PIECES[P.i], key = pc.notes[P.idx][0];
+  app.innerHTML = `
+    <div class="topbar">
+      <button class="xbtn" id="quitBtn">✕</button>
+      <div class="progress"><i id="pbar"></i></div>
+      <button class="hearbtn" id="hearBtn" aria-label="Hear it">▶</button>
+    </div>
+    <div class="mel-title">${pc.icon} ${pc.title}</div>
+    <p class="q-hint" style="text-align:center">${pc.sub} · simplified for beginners</p>
+    <div class="mchips" id="chips">
+      ${pc.notes.map(([k, b], ni) =>
+        `<div class="mchip${ni < P.idx ? ' done' : ni === P.idx ? ' cur' : ''}" style="min-width:${30 + 16 * b}px">${NOTES[k].label}</div>`).join('')}
+    </div>
+    ${staffSVG(key)}
+    ${pianoKeysHTML()}
+    <div class="sndstat">${midiAccess ? '🎹 MIDI ready — play on your keyboard' : ''}</div>`;
+  document.getElementById('pbar').style.width = (P.idx / pc.notes.length * 100) + '%';
+  document.getElementById('quitBtn').onclick = () => { P.demo = false; renderPiano(); };
+  document.getElementById('hearBtn').onclick = demoPiano;
+  const cur = document.querySelector('.mchip.cur');
+  if(cur) cur.scrollIntoView({inline:'center', block:'nearest'});
+  document.getElementById('pkeys').addEventListener('pointerdown', e => {
+    const k = e.target.closest('.pk-white,.pk-black');
+    if(k) pianoInput(+k.dataset.m, 'tap');
+  });
+  window.scrollTo(0, 0);
+}
+function flashKey(m, cls){
+  const el = document.querySelector(`#pkeys [data-m="${m}"]`);
+  if(!el) return;
+  el.classList.add(cls);
+  setTimeout(() => el.classList.remove(cls), cls === 'right' ? 320 : 450);
+}
+function pianoInput(m, src){
+  if(P && P.demo) return;
+  withAudio(c => { // every keypress sounds, MIDI or tap
+    cutPreview();
+    previewVoices.push(scheduleNote(c, c.currentTime + 0.02, midiFreq(m), 1.2, 0.22));
+  });
+  if(!P) return; // menu screen: free play, no judging
+  const pc = PIANO_PIECES[P.i];
+  const want = NOTE_MIDI[pc.notes[P.idx][0]];
+  if(m === want){
+    flashKey(m, 'right');
+    P.idx++;
+    setTimeout(() => { P.idx >= pc.notes.length ? finishPiano() : renderPianoPlay(); }, 300);
+  }else{
+    P.misses++;
+    flashKey(m, 'wrong');
+  }
+}
+function demoPiano(){
+  if(P.demo) return;
+  P.demo = true;
+  const btn = document.getElementById('hearBtn');
+  if(btn) btn.classList.add('playing');
+  const beat = 0.6, gap = 0.04;
+  const notes = PIANO_PIECES[P.i].notes;
+  let started = false;
+  withAudio(c => {
+    started = true;
+    cutPreview();
+    const t0 = c.currentTime + 0.08;
+    let t = 0;
+    notes.forEach(([k, b]) => {
+      scheduleNote(c, t0 + t, midiFreq(NOTE_MIDI[k]), b * beat * 0.94, 0.22);
+      t += b * beat + gap;
+    });
+    setTimeout(() => {
+      P.demo = false;
+      const b2 = document.getElementById('hearBtn');
+      if(b2) b2.classList.remove('playing');
+    }, t * 1000 + 400);
+  });
+  setTimeout(() => { // unlock failed: don't leave the button stuck
+    if(!started){ P.demo = false; if(btn) btn.classList.remove('playing'); }
+  }, 1500);
+}
+function finishPiano(){
+  hideSheet();
+  const pc = PIANO_PIECES[P.i];
+  P = null;
+  S.xp += 15; saveS(); bumpStreak(); confetti();
+  app.innerHTML = `
+    <div class="result">
+      <div class="big">🎹</div>
+      <h2>Lovely!</h2>
+      <p class="sub">You played <b>${pc.title}</b> — ${pc.notes.length} notes</p>
+      <div class="statgrid">
+        <div class="statcard"><b>+15</b><span>XP</span></div>
+        <div class="statcard"><b>${pc.notes.length}</b><span>Notes</span></div>
+      </div>
+      <div class="foot">
+        <button class="btn btn-green" id="againBtn">Play again</button>
+        <button class="btn btn-blue" id="listBtn">Piano pieces</button>
+        <button class="btn btn-ghost" id="homeBtn">Back home</button>
+      </div>
+    </div>`;
+  document.getElementById('againBtn').onclick = () => startPiano(PIANO_PIECES.indexOf(pc));
+  document.getElementById('listBtn').onclick = renderPiano;
   document.getElementById('homeBtn').onclick = renderHome;
   window.scrollTo(0, 0);
 }
