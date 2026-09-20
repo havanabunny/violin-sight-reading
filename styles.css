@@ -208,6 +208,23 @@ body{
 .sndstat{font-size:13px; color:var(--gray); min-height:20px; margin-top:2px;
   text-align:center; padding:0 28px;}
 
+/* ---------- piano ---------- */
+.midirow{margin:2px 0 4px;}
+.midirow .btn{margin-bottom:6px;}
+.pkeys{position:relative; display:flex; height:168px; margin:8px auto 4px; max-width:430px;
+  touch-action:manipulation; -webkit-user-select:none; user-select:none;}
+.pk-white{flex:1; background:#fff; border:2px solid var(--line); border-radius:0 0 12px 12px;
+  margin:0 -1px; cursor:pointer; display:flex; align-items:flex-end; justify-content:center;
+  padding-bottom:10px; font-weight:900; color:var(--gray); box-shadow:0 4px 0 var(--line);}
+.pk-white:active{transform:translateY(2px); box-shadow:0 1px 0 var(--line);}
+.pk-black{position:absolute; top:0; width:9%; height:96px; background:#2a231b; border-radius:0 0 8px 8px;
+  z-index:2; cursor:pointer; display:flex; align-items:flex-end; justify-content:center;
+  padding-bottom:8px; color:#cfc4b2; font-size:12px; font-weight:800;}
+.pk-white.right{background:var(--green-light); border-color:var(--green);}
+.pk-black.right{background:#2f7a1e;}
+.pk-white.wrong{background:var(--red-light); border-color:var(--red); animation:shake .4s;}
+.pk-black.wrong{background:#a02a2a; animation:shake .4s;}
+
 /* ---------- audio-failure toast ---------- */
 .toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px);
   background:#1c1c1e; color:#fff; padding:10px 16px; border-radius:14px; font-size:14px;
