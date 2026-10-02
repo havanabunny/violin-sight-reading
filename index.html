@@ -6,18 +6,77 @@
 <meta name="theme-color" content="#58cc02">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Violin Notes">
-<title>Violin Sight Reading</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎻</text></svg>">
+<meta name="apple-mobile-web-app-title" content="Playground">
+<title>Playground</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎪</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=21">
+<style>
+  :root{
+    --green:#58cc02; --green-dark:#58a700;
+    --blue:#1cb0f6; --blue-dark:#1899d6;
+    --ink:#2a231b; --gray:#8a7d6b; --line:#e9e1d3; --bg:#faf7f1;
+  }
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    -webkit-tap-highlight-color:transparent; touch-action:manipulation; overscroll-behavior:none;
+  }
+  main{max-width:480px; margin:0 auto; min-height:100dvh; box-sizing:border-box;
+    padding:8px 20px calc(24px + env(safe-area-inset-bottom));
+    display:flex; flex-direction:column;}
+  .hero{text-align:center; padding:26px 0 10px;}
+  .hero .mascot{font-size:76px; display:inline-block; animation:bob 2.4s ease-in-out infinite;}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-10px) rotate(4deg)}}
+  .hero h1{font-size:30px; font-weight:900; margin:14px 0 6px;}
+  .hero p{color:var(--gray); font-weight:700; margin:0 0 18px; font-size:16px;}
+  .stats{text-align:center; font-weight:900; font-size:15px; color:var(--blue-dark); padding:2px 0 10px;}
+  .card{
+    display:flex; align-items:center; gap:14px; width:100%; box-sizing:border-box;
+    padding:16px; margin:0 0 12px; border-radius:16px; border:2px solid var(--line);
+    background:#fff; box-shadow:0 4px 0 var(--line); text-decoration:none; color:var(--ink);
+    transition:transform .06s, box-shadow .06s;
+  }
+  .card:active{transform:translateY(2px); box-shadow:0 1px 0 var(--line);}
+  .card .ic{font-size:34px; line-height:1;}
+  .card .tx{flex:1; display:flex; flex-direction:column; gap:2px; text-align:left;}
+  .card .tx b{font-size:18px; font-weight:900;}
+  .card .tx span{font-size:13px; font-weight:700; color:var(--gray);}
+  .card .go{font-size:24px; color:#afafaf; font-weight:900;}
+  .tip{text-align:center; color:var(--gray); font-size:13px; font-weight:700; margin-top:10px;}
+</style>
 </head>
 <body>
-<div id="app"></div>
-<div id="sheet" class="sheet"></div>
-<div id="confetti"></div>
-<script src="app.js?v=21"></script>
+<main>
+  <div class="hero">
+    <span class="mascot">🎪</span>
+    <h1>Playground</h1>
+    <p>Pick something to play</p>
+  </div>
+  <div class="stats" id="stats" hidden></div>
+  <a class="card" href="violin/">
+    <span class="ic">🎻</span>
+    <span class="tx"><b>Violin</b><span>Sight reading &amp; melodies</span></span>
+    <span class="go">›</span>
+  </a>
+  <a class="card" href="piano/">
+    <span class="ic">🎹</span>
+    <span class="tx"><b>Piano</b><span>Chopin starter · MIDI keyboard</span></span>
+    <span class="go">›</span>
+  </a>
+  <p class="tip">Tip: use Share → Add to Home Screen<br>to launch this like an app 🎪</p>
+</main>
+<script>
+  try {
+    var s = JSON.parse(localStorage.getItem('vsr'));
+    if (s) {
+      var el = document.getElementById('stats');
+      el.hidden = false;
+      el.textContent = '🔥 ' + (s.streak || 0) + '  ·  ⚡ ' + (s.xp || 0) + ' XP';
+    }
+  } catch (e) {}
+</script>
 </body>
 </html>
