@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#58cc02">
+<title>Ski · Playground</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛷️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{--green:#58cc02;--green-dark:#58a700;--blue:#1cb0f6;--blue-dark:#1899d6;
+    --ink:#2a231b;--gray:#8a7d6b;--line:#e9e1d3;--bg:#faf7f1;--red:#ff5b5b;}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    -webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+  main{max-width:560px;margin:0 auto;box-sizing:border-box;padding:8px 20px 48px;}
+  .back{display:inline-block;margin-top:10px;color:var(--blue-dark);font-weight:900;text-decoration:none;font-size:15px;}
+  h1{font-size:26px;font-weight:900;margin:14px 0 4px;}
+  .sub{color:var(--gray);font-weight:700;font-size:14px;margin:0 0 18px;}
+  h2{font-size:20px;font-weight:900;margin:26px 0 10px;}
+  .concept{background:#fff;border:2px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;}
+  .concept b{font-weight:900;} .concept p{margin:6px 0 0;font-size:14px;font-weight:700;color:#4a4238;line-height:1.5;}
+  #quiz .q{background:#fff;border:2px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px;}
+  #quiz .q p{font-weight:900;font-size:15px;margin:0 0 10px;}
+  #quiz .opt{display:block;width:100%;text-align:left;font:inherit;font-weight:700;font-size:14px;
+    background:var(--bg);border:2px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;}
+  #quiz .opt.correct{background:#e6f9d5;border-color:var(--green);}
+  #quiz .opt.wrong{background:#ffe3e3;border-color:var(--red);}
+  #quiz .opt:disabled{cursor:default;opacity:.85;}
+  #quiz .why{display:none;font-size:13px;font-weight:700;color:var(--gray);margin-top:6px;line-height:1.5;}
+  #quiz .q.answered .why{display:block;}
+  #score{text-align:center;font-weight:900;font-size:18px;margin:16px 0;display:none;}
+  .btn{display:block;width:100%;font:inherit;font-weight:900;font-size:16px;color:#fff;background:var(--green);
+    border:none;border-radius:14px;padding:14px;box-shadow:0 4px 0 var(--green-dark);cursor:pointer;margin-top:8px;}
+  .btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--green-dark);}
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="../">‹ Playground</a>
+  <h1>⛷️ Ski</h1>
+  <p class="sub">Technique, mountain sense &amp; safety — learn, then quiz yourself.</p>
+
+  <h2>Key concepts</h2>
+  <div class="concept"><b>Wedge → parallel</b><p>Everyone starts in a <b>wedge</b> ("pizza") — tips together, tails apart — to control speed. As you progress, the wedge narrows until your skis stay <b>parallel</b> through the whole turn. Rushing past the wedge is why beginners bomb hills they can't handle.</p></div>
+  <div class="concept"><b>The fall line</b><p>The most direct path straight down the hill. <b>Speed control = turning across the fall line.</b> The more your skis point across the hill (not down it), the slower you go. To stop: turn fully across and dig in your edges.</p></div>
+  <div class="concept"><b>Pressure the outside ski</b><p>In every turn, most of your weight belongs on the <b>downhill (outside) ski</b>. Beginners instinctively lean uphill onto the inside ski — and wash out. Trust the outside edge.</p></div>
+  <div class="concept"><b>Trail ratings</b><p>🟢 Green circle = easiest · 🟦 Blue square = intermediate · ⬛ Black diamond = advanced · ⬛⬛ Double black = experts only. Ratings are relative to <i>that resort</i> — a black at a small hill ≠ a black at Jackson Hole.</p></div>
+  <div class="concept"><b>Responsibility code</b><p>The <b>downhill skier always has the right of way</b> — it's your job to avoid the person below you. Also: don't stop where you're invisible from above, and look uphill before merging onto a trail.</p></div>
+
+  <h2>Quiz yourself</h2>
+  <div id="quiz"></div>
+  <div id="score"></div>
+  <button class="btn" id="retry" style="display:none">Try again</button>
+</main>
+<script>
+var QUIZ=[
+ {q:"The 'pizza' or wedge position is…",o:["Ski tips together, tails apart — the beginner speed-control stance","Skis crossed like an X","A ski-jump takeoff position"],a:0,
+  w:"Tips together, push the tails out to make a wedge. More wedge = more braking. Every skier starts here."},
+ {q:"The 'fall line' is…",o:["The lift line at the base","The most direct downhill path down the slope","The boundary of the ski area"],a:1,
+  w:"Water would flow straight down the fall line. Your speed comes from how much you point along it vs. across it."},
+ {q:"To control your speed on a slope, you should…",o:["Point your skis straight downhill","Turn your skis more across the hill","Tuck lower"],a:1,
+  w:"Across the hill = slow. Down the hill = fast. Beginners who get scared usually point downhill — exactly wrong."},
+ {q:"In a turn, most of your weight should be on…",o:["The uphill (inside) ski","Both skis exactly evenly","The downhill (outside) ski"],a:2,
+  w:"Pressure the outside ski and let its edge grip. Leaning onto the inside ski is the classic beginner washout."},
+ {q:"Put these trail ratings in order, easiest to hardest:",o:["Blue → Green → Black","Green → Blue → Black","Black → Blue → Green"],a:1,
+  w:"Green circle (easiest), blue square (intermediate), black diamond (advanced). And they're relative to each resort."},
+ {q:"Who has the right of way on the mountain?",o:["The faster skier","The downhill skier","The skier on the left"],a:1,
+  w:"The person below you can't see you — so it's your responsibility to avoid them. Always."},
+ {q:"The DIN setting on your bindings controls…",o:["How tall your ski poles are","How much force releases the binding in a fall","Your boot size"],a:1,
+  w:"DIN = release tension. Too low and skis pop off on every turn; too high and they won't release when you need them to."},
+ {q:"'Carving' a turn (vs. skidding) means…",o:["Making S-shapes in powder","The ski edges grip and cut a clean arc","Stopping with a hockey stop"],a:1,
+  w:"A carved turn leaves two thin lines in the snow — the edge doing the work, not a skid. It's the efficient, fast way to turn."},
+ {q:"Where should you NOT stop on a run?",o:["At the side of the trail","Just below a rollover where you're invisible from above","At a trail merge after looking uphill"],a:1,
+  w:"If uphill skiers can't see you, they can't avoid you. Always stop somewhere visible, at the trail's edge."},
+ {q:"In powder, the key adjustment is…",o:["Lean way back","Keep weight centered and even, stay relaxed","Wedge harder"],a:1,
+  w:"Centered stance with even weight lets the skis float. Leaning back exhausts your quads; wedging in powder just doesn't work."}
+];
+var qi=0,correct=0,qbox=document.getElementById('quiz');
+function renderQ(){
+  if(qi>=QUIZ.length){finish();return;}
+  var q=QUIZ[qi],d=document.createElement('div');d.className='q';
+  d.innerHTML='<p>Q'+(qi+1)+' / '+QUIZ.length+' — '+q.q+'</p>';
+  q.o.forEach(function(opt,i){
+    var b=document.createElement('button');b.className='opt';b.textContent=opt;
+    b.onclick=function(){
+      var btns=d.querySelectorAll('.opt');
+      btns.forEach(function(x){x.disabled=true;});
+      if(i===q.a){b.classList.add('correct');correct++;}
+      else{b.classList.add('wrong');btns[q.a].classList.add('correct');}
+      d.classList.add('answered');
+      var w=document.createElement('div');w.className='why';w.textContent=q.w;d.appendChild(w);
+      setTimeout(function(){qi++;d.remove();renderQ();},2600);
+    };
+    d.appendChild(b);
+  });
+  qbox.appendChild(d);
+}
+function finish(){
+  var s=document.getElementById('score');s.style.display='block';
+  s.textContent='You got '+correct+' / '+QUIZ.length+' '+(correct>=8?'🎉':correct>=5?'💪':'📖');
+  document.getElementById('retry').style.display='block';
+  try{
+    var best=JSON.parse(localStorage.getItem('quiz-ski')||'0');
+    if(correct>best)localStorage.setItem('quiz-ski',JSON.stringify(correct));
+  }catch(e){}
+}
+document.getElementById('retry').onclick=function(){
+  qi=0;correct=0;qbox.innerHTML='';
+  document.getElementById('score').style.display='none';
+  this.style.display='none';renderQ();
+};
+renderQ();
+</script>
+</body>
+</html>
