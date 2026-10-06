@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#58cc02">
+<title>Coaching Playbook · Fitness · Playground</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{--green:#58cc02;--green-dark:#58a700;--blue:#1cb0f6;--blue-dark:#1899d6;
+    --ink:#2a231b;--gray:#8a7d6b;--line:#e9e1d3;--bg:#faf7f1;--red:#ff5b5b;--orange:#ff9600;}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    -webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+  main{max-width:560px;margin:0 auto;box-sizing:border-box;padding:8px 20px 48px;min-height:100dvh;}
+  .back{display:inline-block;margin-top:10px;color:var(--blue-dark);font-weight:900;text-decoration:none;font-size:15px;}
+  h1{font-size:26px;font-weight:900;margin:14px 0 4px;}
+  .sub{color:var(--gray);font-weight:700;font-size:14px;margin:0 0 18px;}
+  /* lesson map */
+  .lnode{display:flex;align-items:center;gap:14px;width:100%;box-sizing:border-box;
+    padding:16px;margin:0 0 12px;border-radius:16px;border:2px solid var(--line);
+    background:#fff;box-shadow:0 4px 0 var(--line);font:inherit;cursor:pointer;
+    color:var(--ink);text-align:left;}
+  .lnode:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line);}
+  .lnode.locked{opacity:.45;cursor:default;}
+  .lnode .ic{font-size:34px;line-height:1;}
+  .lnode .tx{flex:1;} .lnode .tx b{display:block;font-size:17px;font-weight:900;}
+  .lnode .tx span{font-size:13px;font-weight:700;color:var(--gray);}
+  .lnode .st{font-size:22px;font-weight:900;color:var(--green-dark);}
+  .lnode.locked .st{color:#afafaf;}
+  #hud{display:flex;align-items:center;gap:12px;margin:12px 0 4px;}
+  #hearts{font-weight:900;font-size:16px;color:var(--red);flex:1;}
+  #xpbar{font-weight:900;font-size:16px;color:var(--orange);}
+  #prog{height:12px;background:#e9e1d3;border-radius:999px;overflow:hidden;margin-bottom:18px;}
+  #progfill{height:100%;width:0;background:var(--green);border-radius:999px;transition:width .3s;}
+  .card{background:#fff;border:2px solid var(--line);border-radius:16px;padding:18px;margin-bottom:12px;}
+  .card h3{margin:0 0 8px;font-size:18px;font-weight:900;}
+  .card p{margin:0;font-size:15px;font-weight:700;color:#4a4238;line-height:1.65;}
+  .card p b{color:var(--ink);}
+  .card .q{font-size:17px;font-weight:900;margin:0 0 12px;line-height:1.5;}
+  .opt{display:block;width:100%;text-align:left;font:inherit;font-weight:700;font-size:14.5px;
+    background:var(--bg);border:2px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer;line-height:1.5;}
+  .opt.correct{background:#e6f9d5;border-color:var(--green);}
+  .opt.wrong{background:#ffe3e3;border-color:var(--red);}
+  .opt:disabled{cursor:default;}
+  .why{display:none;font-size:13.5px;font-weight:700;color:var(--gray);margin-top:8px;line-height:1.6;}
+  .answered .why{display:block;}
+  .btn{display:block;width:100%;font:inherit;font-weight:900;font-size:16px;color:#fff;background:var(--green);
+    border:none;border-radius:14px;padding:14px;box-shadow:0 4px 0 var(--green-dark);cursor:pointer;margin-top:10px;}
+  .btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--green-dark);}
+  .btn.gray{background:#cfc6b4;box-shadow:0 4px 0 #b3a88f;}
+  .center{text-align:center;padding:30px 10px;}
+  .center .big{font-size:64px;}
+  .center h2{font-size:24px;font-weight:900;margin:12px 0 6px;}
+  .center p{color:var(--gray);font-weight:700;font-size:15px;margin:0 0 8px;}
+  .xpline{font-weight:900;color:var(--orange);font-size:18px;margin:10px 0;}
+</style>
+</head>
+<body>
+<main id="app">
+  <a class="back" href="index.html" id="backlink">‹ Fitness</a>
+  <div id="view"></div>
+</main>
+<script>
+var LESSONS=[
+{id:"stages",icon:"🪜",title:"Stages of Change",desc:"Meet people where they are",
+ items:[
+  {t:"teach",h:"Everyone is at a different stage",
+   b:"ACE uses the <b>Stages of Change</b> model. People move through <b>5 stages</b> — and the right coaching move depends entirely on which stage someone is in. Pushing a workout plan on someone who isn't ready yet backfires."},
+  {t:"teach",h:"The 5 stages",
+   b:"<b>1. Precontemplation</b> — not planning to change (may not see a reason to).<br><b>2. Contemplation</b> — thinking about it, ambivalent, no commitment yet.<br><b>3. Preparation</b> — planning to start within 30 days, taking small steps.<br><b>4. Action</b> — actively doing it, for less than 6 months.<br><b>5. Maintenance</b> — doing it 6+ months, working to keep it going."},
+  {t:"mc",q:"\"Exercise? Nah, I'm fine the way I am.\" Which stage?",o:["Precontemplation","Preparation","Action"],a:0,
+   why:"No intention to change = precontemplation. The move here isn't a program — it's raising awareness, gently."},
+  {t:"mc",q:"She's been talking about joining the gym for two months but hasn't gone. Stage?",o:["Action","Contemplation","Maintenance"],a:1,
+   why:"Thinking about it + ambivalence = contemplation. Best move: explore pros and cons together (decisional balance), not pressure."},
+  {t:"mc",q:"He bought workout shoes, cleared his evenings, and plans to start Monday. Stage?",o:["Contemplation","Preparation","Maintenance"],a:1,
+   why:"Taking concrete steps toward starting within 30 days = preparation. Now IS the time to help build the actual plan."},
+  {t:"mc",q:"She's been training twice a week for 2 months. Stage?",o:["Action","Precontemplation","Maintenance"],a:0,
+   why:"Actively doing the new behavior for under 6 months = action. Support it, celebrate it, guard against burnout."},
+  {t:"mc",q:"Your partner is in contemplation — thinking about exercise but unsure. What's the best move?",o:["Sign them up for a 6-day program","Explore what they'd gain vs. what's holding them back","Tell them they're making excuses"],a:1,
+   why:"Decisional balance — weighing pros and cons out loud — moves contemplators forward. Pressure moves them backward."}
+ ]},
+{id:"oars",icon:"💬",title:"OARS: Talk Like a Coach",desc:"Motivational interviewing basics",
+ items:[
+  {t:"teach",h:"OARS — four coaching tools",
+   b:"ACE teaches <b>motivational interviewing</b> through <b>OARS</b>:<br><b>O</b> — Open-ended questions (can't be answered yes/no)<br><b>A</b> — Affirmations (genuine recognition of effort)<br><b>R</b> — Reflective listening (mirror back what you hear)<br><b>S</b> — Summaries (pull the key points together)"},
+  {t:"mc",q:"Which is an OPEN-ended question?",o:["\"Do you want to work out tomorrow?\"","\"What would being stronger let you do?\"","\"Did you exercise this week?\""],a:1,
+   why:"Open questions invite real answers and reflection. Yes/no questions shut conversation down."},
+  {t:"mc",q:"Which is a genuine affirmation?",o:["\"Good job, I guess.\"","\"You're lazy when you skip.\"","\"You've shown up twice a week for a month — that's real consistency.\""],a:2,
+   why:"Affirmations must be specific and sincere. They build self-belief — vague praise feels hollow, criticism destroys it."},
+  {t:"mc",q:"She says: \"I'm just too wiped after work to train.\" Best reflective response?",o:["\"Just push through it.\"","\"It sounds like by evening there's genuinely nothing left in the tank.\"","\"You should try mornings then.\""],a:1,
+   why:"Reflective listening mirrors her experience without judging or immediately problem-solving. Feeling heard comes before solutions."},
+  {t:"mc",q:"A good summary sounds like…",o:["\"So basically you're lazy.\"","\"So on one hand evenings feel impossible, and on the other you really want this — did I get that right?\"","\"Anyway, here's your program.\""],a:1,
+   why:"Summaries collect both sides and check understanding. They make the person feel understood — and often they solve it themselves."},
+  {t:"mc",q:"Which approach is NOT motivational interviewing?",o:["Asking open questions","Lecturing about health risks to scare them","Reflecting what you hear"],a:1,
+   why:"Arguing, lecturing and scaring create resistance. MI draws motivation OUT of the person instead of pushing it in."},
+  {t:"teach",h:"The golden rule",
+   b:"<b>Resist the righting reflex</b> — the urge to immediately fix, advise or correct. When your partner shares a struggle, reflect first, advise second (and only with permission: <i>\"Can I share an idea?\"</i>)."}
+ ]},
+{id:"smart",icon:"🎯",title:"SMART Goals",desc:"Goals that actually work",
+ items:[
+  {t:"teach",h:"Vague goals die. SMART goals live.",
+   b:"<b>S</b>pecific — exactly what?<br><b>M</b>easurable — how will you know?<br><b>A</b>ttainable — realistic from where you are now?<br><b>R</b>elevant — does it matter to YOU?<br><b>T</b>ime-bound — by when?"},
+  {t:"mc",q:"Which goal is SMART?",o:["\"Get in shape this year\"","\"Walk 20 minutes before dinner, Mon/Wed/Fri, for the next 2 weeks\"","\"Exercise more\""],a:1,
+   why:"Specific activity + measurable amount + realistic + time-bound. 'Get in shape' fails every letter."},
+  {t:"mc",q:"\"I want to get stronger.\" What's the weakest part of this goal?",o:["It's not measurable or time-bound","It's too ambitious","Strength isn't a good goal"],a:0,
+   why:"How will you know you got stronger, and by when? Add numbers and a deadline: e.g. 'goblet squat 35 lbs for 10 reps by December.'"},
+  {t:"teach",h:"Process beats outcome",
+   b:"<b>Outcome goals</b> (\"lose 10 lbs\") are motivating but not fully in your control.<br><b>Process goals</b> (\"strength train twice a week\") are behaviors you control 100%. ACE coaches set <b>process goals</b> — hit the behaviors and outcomes follow."},
+  {t:"mc",q:"Which is a PROCESS goal?",o:["\"Lose 5 pounds\"","\"Look better for the trip\"","\"Do the full-body workout every Tue and Sat\""],a:2,
+   why:"It's a behavior, fully in your control. You either did the workout or you didn't — no scale ambiguity."},
+  {t:"mc",q:"Best first goal for a total beginner?",o:["\"Train 6 days a week\"","\"Two 30-minute full-body sessions a week for one month\"","\"Deadlift double bodyweight by spring\""],a:1,
+   why:"Attainable matters most at the start. Early wins build momentum; impossible goals build quitting."}
+ ]},
+{id:"grit",icon:"🔥",title:"Staying the Course",desc:"Motivation, setbacks & support",
+ items:[
+  {t:"teach",h:"Self-efficacy: the belief engine",
+   b:"<b>Self-efficacy</b> = belief in your ability to succeed. It's the #1 predictor of sticking with exercise. It's built through <b>mastery experiences</b> — small wins, completed workouts, weights that went up. Every finished session is fuel."},
+  {t:"mc",q:"Best way to build a beginner's confidence?",o:["Start with brutal workouts so everything after feels easy","Start achievable, celebrate every completed session","Show them elite athletes for inspiration"],a:1,
+   why:"Mastery experiences build self-efficacy. Surviving a crusher builds dread; completing a doable workout builds 'I can do this.'"},
+  {t:"teach",h:"Lapse ≠ relapse",
+   b:"A <b>lapse</b> = one missed workout (normal, everyone). <b>Relapse</b> = sliding back to old habits for weeks. The danger isn't the missed day — it's the story: <i>\"I blew it, why bother.\"</i> Plan for lapses in advance."},
+  {t:"mc",q:"She misses a full week. Best response?",o:["\"A whole week? You need to be more disciplined.\"","\"One week off changes nothing — want to restart small this week?\"","Say nothing and hope she restarts"],a:1,
+   why:"Normalize the lapse, skip the guilt, shrink the restart. Guilt predicts quitting; self-compassion predicts returning."},
+  {t:"mc",q:"Which motivation lasts longer?",o:["Extrinsic — rewards, pressure, looking good for an event","Intrinsic — enjoyment, values, feeling strong","They're about equal"],a:1,
+   why:"Extrinsic motivation fades when the reward or pressure disappears. Intrinsic — 'I train because I like who I am when I do' — sustains for years."},
+  {t:"teach",h:"Stack the deck: social support",
+   b:"Training with someone doubles down on adherence — accountability, shared fun, built-in schedule. Sound familiar? <b>That's you two.</b> The research says couples who train together stick with it longer. You're already doing the right thing."},
+  {t:"mc",q:"Your partner dreads leg day. Using everything you've learned, best approach?",o:["Open question about what's hard, reflect it, set a smaller SMART leg-day goal together","Tell them legs are important and push through","Skip legs — upper body is fine"],a:0,
+   why:"OARS to understand → SMART to shrink the goal → small win builds self-efficacy. That's the whole playbook in one move. 🎓"}
+ ]}
+];
+var store={xp:0,done:[]};
+try{var s=JSON.parse(localStorage.getItem('fit-coach'));if(s)store=s;}catch(e){}
+function save(){try{localStorage.setItem('fit-coach',JSON.stringify(store));}catch(e){}}
+var app=document.getElementById('view');
+function showMap(){
+  document.getElementById('backlink').style.display='';
+  var h='<h1>💬 Coaching Playbook</h1><p class="sub">ACE-style behavior-change skills, Duolingo-style. <span style="color:var(--orange);font-weight:900;">⚡'+store.xp+' XP</span></p>';
+  LESSONS.forEach(function(L,i){
+    var locked=i>0&&store.done.indexOf(LESSONS[i-1].id)<0;
+    var done=store.done.indexOf(L.id)>=0;
+    h+='<button class="lnode'+(locked?' locked':'')+'" data-i="'+i+'"'+(locked?' disabled':'')+'>'+
+      '<span class="ic">'+L.icon+'</span><span class="tx"><b>'+L.title+'</b><span>'+L.desc+' · '+L.items.length+' steps</span></span>'+
+      '<span class="st">'+(done?'✓':locked?'🔒':'›')+'</span></button>';
+  });
+  h+='<div class="card" style="margin-top:6px"><p style="font-size:13px">Based on ACE\'s behavior-change framework (Stages of Change, motivational interviewing/OARS, SMART goals, self-efficacy). For learning — not a certification.</p></div>';
+  app.innerHTML=h;
+  app.querySelectorAll('.lnode:not(.locked)').forEach(function(b){
+    b.onclick=function(){runLesson(parseInt(b.dataset.i,10));};
+  });
+}
+function runLesson(li){
+  var L=LESSONS[li],idx=0,hearts=3,xp=0;
+  document.getElementById('backlink').style.display='none';
+  function hud(){
+    return '<div id="hud"><div id="hearts">'+'❤️'.repeat(hearts)+'🖤'.repeat(3-hearts)+
+      '</div><div id="xpbar">⚡ +'+xp+'</div></div>'+
+      '<div id="prog"><div id="progfill" style="width:'+Math.round(idx/L.items.length*100)+'%"></div></div>';
+  }
+  function step(){
+    if(hearts<=0){return fail();}
+    if(idx>=L.items.length){return complete();}
+    var it=L.items[idx],h=hud();
+    if(it.t==='teach'){
+      app.innerHTML=h+'<div class="card"><h3>'+it.h+'</h3><p>'+it.b+'</p></div>'+
+        '<button class="btn" id="cont">Continue</button>';
+      document.getElementById('cont').onclick=function(){idx++;step();};
+    }else{
+      app.innerHTML=h+'<div class="card" id="qc"><p class="q">'+it.q+'</p><div id="opts"></div><div class="why"></div></div>';
+      var box=document.getElementById('opts');
+      it.o.forEach(function(opt,i){
+        var b=document.createElement('button');b.className='opt';b.innerHTML=opt;
+        b.onclick=function(){answer(i,b);};
+        box.appendChild(b);
+      });
+    }
+    function answer(i,btn){
+      var btns=app.querySelectorAll('.opt');
+      btns.forEach(function(x){x.disabled=true;});
+      var ok=i===it.a;
+      if(ok){btn.classList.add('correct');xp+=10;}
+      else{btn.classList.add('wrong');btns[it.a].classList.add('correct');hearts--;}
+      var qc=document.getElementById('qc');qc.classList.add('answered');
+      qc.querySelector('.why').textContent=(ok?'✓ ':'')+it.why;
+      var nb=document.createElement('button');nb.className='btn';nb.id='cont';nb.textContent='Continue';
+      nb.onclick=function(){idx++;step();};
+      qc.appendChild(nb);
+      if(hearts<=0){nb.textContent='Continue';}
+    }
+  }
+  function fail(){
+    app.innerHTML='<div class="center"><div class="big">💔</div><h2>Out of hearts!</h2>'+
+      '<p>No worries — even coaches need a rematch.<br>Review the ideas and try the lesson again.</p>'+
+      '<button class="btn" id="rt">Try again</button>'+
+      '<button class="btn gray" id="bk">Back to lessons</button></div>';
+    document.getElementById('rt').onclick=function(){runLesson(li);};
+    document.getElementById('bk').onclick=showMap;
+  }
+  function complete(){
+    var perfect=xp===L.items.filter(function(x){return x.t==='mc';}).length*10;
+    if(perfect)xp+=20;
+    store.xp+=xp;
+    if(store.done.indexOf(L.id)<0)store.done.push(L.id);
+    save();
+    app.innerHTML='<div class="center"><div class="big">🎉</div><h2>Lesson complete!</h2>'+
+      '<p>'+L.title+'</p><div class="xpline">⚡ +'+xp+' XP'+(perfect?' (perfect bonus!)':'')+'</div>'+
+      '<p>Total: ⚡'+store.xp+' XP</p>'+
+      '<button class="btn" id="nx">'+(li<LESSONS.length-1?'Next lesson':'Back to lessons')+'</button>'+
+      '<button class="btn gray" id="bk">Lesson map</button></div>';
+    document.getElementById('nx').onclick=function(){
+      if(li<LESSONS.length-1)runLesson(li+1);else showMap();
+    };
+    document.getElementById('bk').onclick=showMap;
+  }
+  step();
+}
+showMap();
+</script>
+</body>
+</html>
