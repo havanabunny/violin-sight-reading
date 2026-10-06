@@ -367,7 +367,7 @@ const app = document.getElementById('app');
 const sheet = document.getElementById('sheet');
 function shuffle(a){ a = a.slice(); for(let i = a.length-1; i > 0; i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; }
 function hideSheet(){ sheet.className = 'sheet'; sheet.innerHTML = ''; }
-function levelPool(lv){ return lv.all ? ALL_KEYS : lv.notes; }
+function levelPool(lv){ return lv.all ? ALL_KEYS.filter(k => NOTE_SPOTS[k] && NOTE_SPOTS[k].length) : lv.notes; }
 function unlockedNotes(){
   const keys = [];
   LEVELS.forEach(lv => { if(lv.id <= S.unlocked) levelPool(lv).forEach(k => { if(!keys.includes(k)) keys.push(k); }); });
