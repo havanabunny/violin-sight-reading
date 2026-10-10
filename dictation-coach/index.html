@@ -128,7 +128,7 @@ select{font-family:inherit;font-weight:800;font-size:14px;padding:10px;border:2p
 .empty{text-align:center;color:var(--gray);font-weight:700;padding:26px 10px;font-size:14px;}
 </style>
 <script type="importmap">
-{"imports":{"parakeet.js":"https://cdn.jsdelivr.net/npm/parakeet.js@1/+esm"}}
+{"imports":{"@huggingface/transformers":"https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm"}}
 </script>
 </head>
 <body>
@@ -176,6 +176,7 @@ select{font-family:inherit;font-weight:800;font-size:14px;padding:10px;border:2p
   <h3 class="sec" style="margin-top:8px">Speech model</h3>
   <div id="modelInfo" class="banner">…</div>
   <div class="row"><button class="btn primary" id="dlBtn">⬇ Download model</button></div>
+  <div class="setrow"><span>Model size <span class="small">(takes effect on next download)</span></span><select id="asrModelSel"><option value="tiny">tiny · ~75 MB · fastest</option><option value="base">base · ~140 MB · more accurate</option></select></div>
   <h3 class="sec">Recording</h3>
   <div class="setrow"><span>Press-and-hold to talk <span class="small">(off = tap to start/stop)</span></span>
     <label class="switch"><input type="checkbox" id="setHold"><span class="tr"></span></label></div>
@@ -192,9 +193,9 @@ select{font-family:inherit;font-weight:800;font-size:14px;padding:10px;border:2p
   </div>
   <input type="file" id="importFile" accept="application/json" hidden>
   <h3 class="sec">Privacy</h3>
-  <p class="small">Everything runs on your device. Your voice is transcribed locally by the Parakeet model in this browser — no audio is ever uploaded anywhere. Your sessions and practice history stay in this browser's storage.</p>
+  <p class="small">Everything runs on your device. Your voice is transcribed locally by the Whisper model in this browser — no audio is ever uploaded anywhere. Your sessions and practice history stay in this browser's storage.</p>
   <h3 class="sec">Credits</h3>
-  <p class="small">Speech recognition: NVIDIA Parakeet (parakeet-tdt-0.6b-v3), used under <a href="https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3">CC-BY-4.0</a>. In-browser runtime via parakeet.js + ONNX Runtime Web. Pronunciations: dictionaryapi.dev.</p>
+  <p class="small">Speech recognition: OpenAI Whisper (<a href="https://huggingface.co/Xenova/whisper-base.en">Xenova</a>, MIT license) running on-device via Transformers.js. Pronunciations: dictionaryapi.dev.</p>
 </section>
 </main>
 
@@ -214,12 +215,13 @@ select{font-family:inherit;font-weight:800;font-size:14px;padding:10px;border:2p
 </div>
 
 <script type="module">
-import { fromHub } from 'parakeet.js';
+import { pipeline, env } from '@huggingface/transformers';
+env.allowLocalModels = false;
 
 /* ============================== state ============================== */
 const LS_KEY = 'dictationCoach.v1';
-const MODEL_ID = 'parakeet-tdt-0.6b-v3';
-let S = load() || { sessions:[], deck:{}, days:{}, settings:{ hold:false, autoStop:true }, onboarded:false };
+let S = load() || { sessions:[], deck:{}, days:{}, settings:{ hold:false, autoStop:true, asrModel:'tiny' }, onboarded:false };
+if(!S.settings) S.settings={ hold:false, autoStop:true, asrModel:'tiny' };
 function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)); }catch(e){ return null; } }
 function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }catch(e){} }
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -271,90 +273,107 @@ async function blobToMono16k(blob){
   } finally { try{ ctx.close(); }catch(e){} }
 }
 
-/* ============================== model ============================== */
-let pkModel = null, modelState = 'idle'; // idle|loading|ready|error
+/* ============================== model (on-device Whisper via Transformers.js) ============================== */
+const MODELS = {
+  tiny: { id:'Xenova/whisper-tiny.en',  label:'tiny · ~75 MB · fastest',     size:'~75 MB' },
+  base: { id:'Xenova/whisper-base.en',  label:'base · ~140 MB · more accurate', size:'~140 MB' },
+};
+let transcriber = null, modelState = 'idle'; // idle|loading|ready|error
 let modelError = '';
+let currentModelKey = (S.settings && S.settings.asrModel) || 'tiny';
+if(!MODELS[currentModelKey]) currentModelKey='tiny';
 const pill = document.getElementById('enginePill');
 const banner = document.getElementById('modelBanner');
 function setPill(txt, cls){ pill.textContent = txt; pill.className = 'pill'+(cls?' '+cls:''); }
+function backendName(){ return ('gpu' in navigator) ? 'WebGPU' : 'WASM'; }
+function renderModelSelect(){
+  const sel=document.getElementById('asrModelSel'); if(!sel) return;
+  sel.value=currentModelKey;
+  sel.disabled=(modelState==='loading');
+  sel.onchange=()=>switchAsrModel(sel.value);
+}
+function switchAsrModel(key){
+  if(key===currentModelKey || modelState==='loading') return;
+  currentModelKey=key; S.settings.asrModel=key; save();
+  transcriber=null; modelState='idle'; modelError='';
+  renderModelUI();
+}
 function renderModelUI(){
   const info = document.getElementById('modelInfo');
-  const backend = ('gpu' in navigator) ? 'WebGPU' : 'WASM';
+  const m = MODELS[currentModelKey];
   if(modelState==='ready'){
-    setPill('model ready · '+backend, 'ok');
-    banner.innerHTML = '<b>Parakeet is ready</b> — transcribing fully on-device ('+backend+'). Tap the mic and talk.';
-    info.innerHTML = '<b>'+MODEL_ID+'</b><br>Backend: '+backend+' · on-device, offline after download';
-    document.getElementById('dlBtn').disabled = true;
-    document.getElementById('dlBtn').textContent = '✓ Model ready';
+    setPill('model ready · '+backendName(), 'ok');
+    banner.innerHTML = '<b>Whisper is ready</b> — transcribing fully on-device ('+backendName()+', '+esc(m.id.split('/')[1])+'). Tap the mic and talk.';
+    info.innerHTML = '<b>'+esc(m.id)+'</b><br>Backend: '+backendName()+' · on-device, offline after download';
+    const dl=document.getElementById('dlBtn'); dl.disabled=true; dl.textContent='✓ Model ready';
   } else if(modelState==='loading'){
     setPill('downloading model…','busy');
-    banner.innerHTML = '<b>Downloading the speech model…</b> one-time, a few hundred MB. Keep this tab open.<div class="bar"><i id="dlBar"></i></div>';
-    info.innerHTML = 'Downloading…';
+    banner.innerHTML = '<b>Downloading the speech model…</b> '+m.size+', one time. Keep this tab open.<div class="bar"><i id="dlBar"></i></div><div class="small" id="dlStatus" style="margin-top:6px">starting…</div>';
+    info.innerHTML = 'Downloading '+esc(m.id)+'…';
   } else if(modelState==='error'){
     setPill('model failed','err');
-    banner.innerHTML = '<b>Model failed to load.</b> '+esc(modelError)+' <button class="btn" id="retryDl" style="margin-top:8px">Try again</button>';
+    banner.innerHTML = '<b>Model failed to load.</b> '+esc(modelError)+'<div class="row"><button class="btn" id="retryDl" style="margin-top:8px">Try again</button></div><div class="small">Tip: use Wi-Fi and make sure you have a few hundred MB free.</div>';
     info.innerHTML = 'Failed: '+esc(modelError);
     const r=document.getElementById('retryDl'); if(r) r.onclick=()=>loadModel();
-    document.getElementById('dlBtn').disabled = false;
-    document.getElementById('dlBtn').textContent = '⬇ Download model';
+    const dl=document.getElementById('dlBtn'); dl.disabled=false; dl.textContent='⬇ Download model';
   } else {
     setPill('model not loaded','');
-    banner.innerHTML = '<b>One download to start:</b> the Parakeet speech model (~0.5 GB, one time) runs 100% on your device — no account, no key, works offline after. <button class="btn primary" id="dlNow" style="margin-top:8px">⬇ Download &amp; start</button>';
+    banner.innerHTML = '<b>One download to start:</b> the Whisper speech model ('+m.size+', one time) runs 100% on your device — no account, no key, works offline after.<div class="row"><button class="btn primary" id="dlNow" style="margin-top:8px">⬇ Download &amp; start</button></div>';
     info.innerHTML = 'Not downloaded yet.';
     const b=document.getElementById('dlNow'); if(b) b.onclick=()=>loadModel();
   }
+  renderModelSelect();
 }
 async function loadModel(){
   if(modelState==='loading'||modelState==='ready') return;
   modelState='loading'; renderModelUI();
-  const bar = ()=>document.getElementById('dlBar');
-  let pct = 0;
-  const tick = setInterval(()=>{ pct=Math.min(95,pct+Math.random()*4); const b=bar(); if(b) b.style.width=pct+'%'; }, 600);
-  const useGPU = ('gpu' in navigator);
-  const attempts = useGPU
-    ? [{backend:'webgpu',encoderQuant:'fp32',decoderQuant:'int8'},
-       {backend:'webgpu',encoderQuant:'int8',decoderQuant:'int8'},
-       {backend:'wasm',encoderQuant:'int8',decoderQuant:'int8'}]
-    : [{backend:'wasm',encoderQuant:'int8',decoderQuant:'int8'}];
-  let lastErr = null;
-  for(const cfg of attempts){
+  const m=MODELS[currentModelKey];
+  const onProgress=(p)=>{
+    const bar=document.getElementById('dlBar'), st=document.getElementById('dlStatus');
+    if(!bar&&!st) return;
+    if(p.status==='progress'&&p.total>0){
+      const pct=Math.round(100*p.loaded/p.total);
+      if(bar) bar.style.width=pct+'%';
+      if(st) st.textContent=(p.file||'model')+' — '+pct+'%';
+    } else if(p.status==='done'){ if(bar) bar.style.width='100%'; if(st) st.textContent='finalizing…'; }
+    else if(p.status==='initiate'){ if(st) st.textContent='starting '+(p.file||'download')+'…'; }
+  };
+  const devices = ('gpu' in navigator) ? ['webgpu','wasm'] : ['wasm'];
+  let lastErr=null;
+  for(const device of devices){
     try{
-      pkModel = await fromHub(MODEL_ID, cfg);
-      // warmup on 1s of silence so first real transcription isn't slow
-      try{ await pkModel.transcribe(new Float32Array(16000), 16000, {}); }catch(e){}
-      modelState='ready';
-      clearInterval(tick);
-      renderModelUI(); renderAll();
+      transcriber = await pipeline('automatic-speech-recognition', m.id, {
+        device, progress_callback:onProgress,
+      });
+      try{ await transcriber(new Float32Array(16000), { sampling_rate:16000 }); }catch(e){} // warmup
+      modelState='ready'; renderModelUI(); renderAll();
       return;
-    }catch(e){ lastErr = e; }
+    }catch(e){ lastErr=e; }
   }
-  clearInterval(tick);
   modelState='error';
-  modelError = (lastErr && (lastErr.message||String(lastErr))).slice(0,180) || 'unknown error';
+  modelError=((lastErr&&(lastErr.message||String(lastErr)))||'unknown error').slice(0,200);
   renderModelUI();
 }
-function extractWords(result, durationSec){
-  const out=[];
-  const raw = (result && (result.words || result.tokens)) || [];
-  for(const w of raw){
-    const text = w.text ?? w.word ?? w.token ?? '';
-    if(!text || !text.trim()) continue;
-    out.push({ text:text.trim(),
-      start: w.start ?? w.startTime ?? 0,
-      end: w.end ?? w.endTime ?? 0,
-      conf: w.confidence ?? w.conf ?? w.score ?? null });
-  }
-  if(out.length) return out;
-  // fallback: split utterance text, spread evenly
-  const txt = (result && (result.utterance_text || result.text)) || '';
-  const toks = txt.split(/\s+/).filter(Boolean);
-  return toks.map((t,i)=>({ text:t, start:durationSec*i/Math.max(1,toks.length), end:durationSec*(i+1)/Math.max(1,toks.length), conf:null }));
-}
 async function transcribePCM(pcm16k){
-  if(!pkModel) throw new Error('model not loaded');
-  const res = await pkModel.transcribe(pcm16k, 16000, { returnTimestamps:true, returnConfidences:true });
-  const text = (res && (res.utterance_text || res.text) || '').trim();
-  const words = extractWords(res, pcm16k.length/16000);
+  if(!transcriber) throw new Error('model not loaded');
+  const out = await transcriber(pcm16k, { sampling_rate:16000, return_timestamps:true, chunk_length_s:30, stride_length_s:5 });
+  const text=(out.text||'').trim();
+  const words=[];
+  const chunks=out.chunks||[];
+  const dur=pcm16k.length/16000;
+  const push=(t,t0,t1)=>{ if(t) words.push({text:t,start:t0,end:t1,conf:null}); };
+  if(chunks.length){
+    for(const c of chunks){
+      const t0=(c.timestamp&&c.timestamp[0]!=null)?c.timestamp[0]:0;
+      const t1=(c.timestamp&&c.timestamp[1]!=null)?c.timestamp[1]:dur;
+      const toks=(c.text||'').split(/\s+/).filter(Boolean);
+      toks.forEach((t,i)=>push(t, t0+(t1-t0)*i/Math.max(1,toks.length), t0+(t1-t0)*(i+1)/Math.max(1,toks.length)));
+    }
+  }
+  if(!words.length){
+    const toks=text.split(/\s+/).filter(Boolean);
+    toks.forEach((t,i)=>push(t, dur*i/Math.max(1,toks.length), dur*(i+1)/Math.max(1,toks.length)));
+  }
   return { text, words };
 }
 
@@ -710,7 +729,7 @@ function showOnboard(){
   const w=document.getElementById('onboardWrap'); w.hidden=false;
   document.getElementById('onboard').innerHTML=
     '<div class="big">🎙️</div><h2>Dictate naturally.<br>Fix how you say it.</h2>'+
-    '<p>Talk, get your text. Tap any word for its pronunciation coach: IPA, native audio, mouth tips, and a record-and-check loop.<br><br>First, one download: the Parakeet speech model (~0.5 GB). It runs <b>100% on your device</b> — no account, no key, works offline after.</p>'+
+    '<p>Talk, get your text. Tap any word for its pronunciation coach: IPA, native audio, mouth tips, and a record-and-check loop.<br><br>First, one download: the Whisper speech model (~75 MB). It runs <b>100% on your device</b> — no account, no key, works offline after.</p>'+
     '<div class="row"><button class="btn primary" id="obDl">⬇ Download model &amp; start</button></div>'+
     '<div class="row"><button class="btn" id="obLater">I’ll do it later</button></div>';
   document.getElementById('obDl').onclick=()=>{ w.hidden=true; S.onboarded=true; save(); loadModel(); };
