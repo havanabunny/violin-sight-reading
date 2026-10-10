@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1c1c1e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dictation Coach">
+<title>Dictation Coach</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎙️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#23201a; --gray:#8a7d6b; --line:#e9e1d3; --bg:#faf7f1;
+  --green:#58cc02; --green-d:#58a700; --blue:#1cb0f6; --blue-d:#1899d6;
+  --amber:#f5a623; --red:#e5534b; --card:#ffffff;
+}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;overscroll-behavior:none;}
+main{max-width:560px;margin:0 auto;min-height:100dvh;box-sizing:border-box;
+  padding:10px 18px calc(96px + env(safe-area-inset-bottom));}
+header.top{display:flex;align-items:center;justify-content:space-between;padding:10px 2px 4px;}
+header.top h1{font-size:22px;font-weight:900;margin:0;}
+.pill{font-size:12px;font-weight:800;padding:6px 10px;border-radius:999px;background:#eee7d6;color:var(--gray);white-space:nowrap;}
+.pill.ok{background:#e2f5d2;color:var(--green-d);}
+.pill.busy{background:#d6ecfa;color:var(--blue-d);}
+.pill.err{background:#fbe0de;color:var(--red);}
+.tab{display:none;}
+.tab.active{display:block;animation:fade .18s ease;}
+@keyframes fade{from{opacity:.4}to{opacity:1}}
+.banner{border:2px solid var(--line);background:var(--card);border-radius:14px;
+  padding:12px 14px;margin:8px 0;font-size:14px;font-weight:700;color:var(--gray);}
+.banner b{color:var(--ink);}
+.banner .bar{height:8px;background:#f0e9d8;border-radius:99px;margin-top:8px;overflow:hidden;}
+.banner .bar i{display:block;height:100%;width:0;background:var(--blue);border-radius:99px;transition:width .2s;}
+.micwrap{text-align:center;padding:18px 0 6px;}
+#micBtn{width:104px;height:104px;border-radius:50%;border:none;font-size:44px;cursor:pointer;
+  background:var(--green);box-shadow:0 6px 0 var(--green-d);transition:transform .06s,box-shadow .06s;}
+#micBtn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--green-d);}
+#micBtn.rec{background:var(--red);box-shadow:0 6px 0 #b53a34;animation:pulse 1.2s infinite;}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+#recMeta{font-weight:800;margin-top:10px;min-height:22px;}
+.meter{height:10px;background:#efe8d8;border-radius:99px;overflow:hidden;margin:10px auto 0;max-width:280px;}
+.meter i{display:block;height:100%;width:0;background:var(--blue);border-radius:99px;}
+.row{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap;}
+button.btn{flex:1;border:2px solid var(--line);background:var(--card);border-radius:12px;
+  padding:10px 12px;font-family:inherit;font-weight:800;font-size:14px;color:var(--ink);cursor:pointer;min-width:0;}
+button.btn:active{transform:translateY(1px);}
+button.btn.primary{background:var(--blue);border-color:var(--blue-d);color:#fff;}
+button.btn.danger{color:var(--red);}
+button.btn:disabled{opacity:.5;}
+.transcript{background:var(--card);border:2px solid var(--line);border-radius:14px;
+  padding:14px 16px;font-size:18px;line-height:2;min-height:120px;margin-top:6px;}
+.transcript .hint{color:var(--gray);font-size:14px;font-weight:700;line-height:1.6;margin:0;}
+.transcript .w{border-radius:6px;padding:2px 1px;cursor:pointer;}
+.transcript .w:active{background:#fff3c4;}
+.transcript .w.flag{border-bottom:3px dotted var(--amber);}
+.transcript .w.lowconf{border-bottom:3px dotted var(--blue);}
+.transcript .w.practiced{background:#e2f5d2;}
+#editor textarea{width:100%;box-sizing:border-box;min-height:140px;border:2px solid var(--line);
+  border-radius:14px;padding:12px;font-family:inherit;font-size:16px;}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);
+  border-top:2px solid var(--line);padding:8px 6px calc(8px + env(safe-area-inset-bottom));z-index:20;}
+nav.tabs button{flex:1;border:none;background:none;font-family:inherit;font-weight:800;font-size:12px;
+  color:var(--gray);padding:8px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;}
+nav.tabs button .e{font-size:22px;}
+nav.tabs button.on{color:var(--ink);}
+.sheet-wrap{position:fixed;inset:0;background:rgba(30,25,15,.45);z-index:50;display:flex;
+  align-items:flex-end;justify-content:center;}
+.sheet-wrap[hidden]{display:none;}
+.sheet{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:560px;max-height:88dvh;
+  overflow-y:auto;padding:20px 20px calc(24px + env(safe-area-inset-bottom));box-sizing:border-box;
+  animation:up .22s ease;}
+@keyframes up{from{transform:translateY(40px);opacity:.5}to{transform:none;opacity:1}}
+.sheet .grab{width:44px;height:5px;border-radius:99px;background:var(--line);margin:0 auto 14px;}
+.coach-word{font-size:34px;font-weight:900;text-align:center;margin:2px 0;}
+.coach-ipa{text-align:center;color:var(--gray);font-weight:700;margin-bottom:6px;}
+.tipbox{background:#fff8e6;border:2px solid #f0dfae;border-radius:12px;padding:10px 12px;
+  font-size:14px;font-weight:700;margin:10px 0;}
+.tipbox b{display:block;margin-bottom:2px;}
+.verdict{text-align:center;font-weight:900;font-size:17px;margin:10px 0;min-height:26px;}
+.verdict.good{color:var(--green-d);}
+.verdict.bad{color:var(--red);}
+.streakline{text-align:center;color:var(--gray);font-weight:800;font-size:13px;}
+h3.sec{font-size:16px;font-weight:900;margin:22px 0 8px;}
+.deckcard{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;}
+.deckcard .dw{font-size:22px;font-weight:900;}
+.deckcard .dh{color:var(--gray);font-size:13px;font-weight:700;margin:2px 0 8px;}
+.deckcard .row{margin:8px 0 0;}
+.stats{display:flex;gap:8px;margin:8px 0;}
+.stat{flex:1;background:var(--card);border:2px solid var(--line);border-radius:12px;padding:10px;text-align:center;}
+.stat b{font-size:20px;font-weight:900;display:block;}
+.stat span{font-size:11px;font-weight:800;color:var(--gray);}
+.tiprow{background:var(--card);border:2px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden;}
+.tiprow>button{width:100%;border:none;background:none;font-family:inherit;text-align:left;
+  padding:12px 14px;font-weight:900;font-size:15px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;}
+.tiprow .tb{padding:0 14px 12px;font-size:14px;font-weight:700;color:#5c5344;display:none;}
+.tiprow.open .tb{display:block;}
+.tiprow .ex{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;}
+.tiprow .ex button{border:2px solid var(--line);background:var(--bg);border-radius:99px;
+  padding:6px 12px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;}
+.hist{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;}
+.hist .hd{font-size:12px;font-weight:800;color:var(--gray);margin-bottom:4px;display:flex;justify-content:space-between;}
+.hist .ht{font-size:15px;font-weight:700;line-height:1.5;max-height:4.5em;overflow:hidden;}
+.setrow{display:flex;align-items:center;justify-content:space-between;background:var(--card);
+  border:2px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;font-weight:800;font-size:14px;}
+.switch{position:relative;width:52px;height:30px;flex:none;}
+.switch input{opacity:0;width:100%;height:100%;position:absolute;margin:0;cursor:pointer;z-index:2;}
+.switch .tr{position:absolute;inset:0;background:#ddd;border-radius:99px;transition:.15s;}
+.switch .tr:after{content:'';position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.25);}
+.switch input:checked+.tr{background:var(--green);}
+.switch input:checked+.tr:after{left:25px;}
+.diag{font-size:13px;font-weight:700;}
+.diag .dr{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);}
+.dot{font-weight:900;}
+.dot.ok{color:var(--green-d);} .dot.bad{color:var(--red);} .dot.na{color:var(--gray);}
+.small{font-size:13px;color:var(--gray);font-weight:700;line-height:1.6;}
+select{font-family:inherit;font-weight:800;font-size:14px;padding:10px;border:2px solid var(--line);border-radius:12px;background:var(--card);}
+.onboard{text-align:center;padding:8px 0;}
+.onboard h2{font-size:24px;font-weight:900;margin:6px 0;}
+.onboard p{color:#5c5344;font-weight:700;font-size:15px;line-height:1.6;}
+.onboard .big{font-size:54px;}
+.kbd{background:#efe8d8;border-radius:6px;padding:1px 7px;font-weight:900;}
+.empty{text-align:center;color:var(--gray);font-weight:700;padding:26px 10px;font-size:14px;}
+</style>
+<script type="importmap">
+{"imports":{"parakeet.js":"https://cdn.jsdelivr.net/npm/parakeet.js@1/+esm"}}
+</script>
+</head>
+<body>
+<main>
+<header class="top">
+  <h1>🎙️ Dictation Coach</h1>
+  <div id="enginePill" class="pill">model not loaded</div>
+</header>
+
+<section id="tab-dictate" class="tab active">
+  <div id="modelBanner" class="banner">Setting up…</div>
+  <div class="micwrap">
+    <button id="micBtn" aria-label="dictate">🎙️</button>
+    <div id="recMeta">tap to dictate</div>
+    <div class="meter"><i id="meterFill"></i></div>
+  </div>
+  <div class="row">
+    <button class="btn" id="editBtn">✏️ Edit text</button>
+    <button class="btn" id="copyBtn">📋 Copy</button>
+    <button class="btn" id="clearBtn">🗑 Clear</button>
+  </div>
+  <div id="transcript" class="transcript"><p class="hint">Your dictation appears here. Tap any word to open its pronunciation coach.<br><br>Dotted underlines mark words worth practicing — either the model was unsure, or the word has a sound that trips up Mandarin speakers.</p></div>
+  <div id="editor" hidden>
+    <textarea id="editArea"></textarea>
+    <div class="row">
+      <button class="btn primary" id="saveEdit">Save</button>
+      <button class="btn" id="cancelEdit">Cancel</button>
+    </div>
+  </div>
+</section>
+
+<section id="tab-practice" class="tab">
+  <div class="stats" id="pStats"></div>
+  <div id="deck"></div>
+  <h3 class="sec">Sounds to watch <span class="small">· Mandarin-speaker edition</span></h3>
+  <div id="tips"></div>
+</section>
+
+<section id="tab-history" class="tab">
+  <h3 class="sec" style="margin-top:8px">Sessions</h3>
+  <div id="history"></div>
+</section>
+
+<section id="tab-settings" class="tab">
+  <h3 class="sec" style="margin-top:8px">Speech model</h3>
+  <div id="modelInfo" class="banner">…</div>
+  <div class="row"><button class="btn primary" id="dlBtn">⬇ Download model</button></div>
+  <h3 class="sec">Recording</h3>
+  <div class="setrow"><span>Press-and-hold to talk <span class="small">(off = tap to start/stop)</span></span>
+    <label class="switch"><input type="checkbox" id="setHold"><span class="tr"></span></label></div>
+  <div class="setrow"><span>Auto-stop on silence</span>
+    <label class="switch"><input type="checkbox" id="setAutoStop" checked><span class="tr"></span></label></div>
+  <h3 class="sec">Diagnostics</h3>
+  <div class="banner diag" id="diag"><div class="dr"><span>Microphone</span><span class="dot na" id="dMic">—</span></div><div class="dr"><span>Speech model</span><span class="dot na" id="dModel">—</span></div><div class="dr"><span>Dictionary (IPA + audio)</span><span class="dot na" id="dDict">—</span></div></div>
+  <div class="row"><button class="btn" id="diagRun">Run checks</button></div>
+  <h3 class="sec">Data</h3>
+  <div class="row">
+    <button class="btn" id="exportBtn">Export</button>
+    <button class="btn" id="importBtn">Import</button>
+    <button class="btn danger" id="wipeBtn">Erase all</button>
+  </div>
+  <input type="file" id="importFile" accept="application/json" hidden>
+  <h3 class="sec">Privacy</h3>
+  <p class="small">Everything runs on your device. Your voice is transcribed locally by the Parakeet model in this browser — no audio is ever uploaded anywhere. Your sessions and practice history stay in this browser's storage.</p>
+  <h3 class="sec">Credits</h3>
+  <p class="small">Speech recognition: NVIDIA Parakeet (parakeet-tdt-0.6b-v3), used under <a href="https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3">CC-BY-4.0</a>. In-browser runtime via parakeet.js + ONNX Runtime Web. Pronunciations: dictionaryapi.dev.</p>
+</section>
+</main>
+
+<nav class="tabs">
+  <button data-tab="tab-dictate" class="on"><span class="e">🎙️</span>Dictate</button>
+  <button data-tab="tab-practice"><span class="e">🎯</span>Practice</button>
+  <button data-tab="tab-history"><span class="e">🕘</span>History</button>
+  <button data-tab="tab-settings"><span class="e">⚙️</span>Settings</button>
+</nav>
+
+<div id="coachWrap" class="sheet-wrap" hidden>
+  <div class="sheet"><div class="grab"></div><div id="coachCard"></div></div>
+</div>
+
+<div id="onboardWrap" class="sheet-wrap" hidden>
+  <div class="sheet"><div class="grab"></div><div class="onboard" id="onboard"></div></div>
+</div>
+
+<script type="module">
+import { fromHub } from 'parakeet.js';
+
+/* ============================== state ============================== */
+const LS_KEY = 'dictationCoach.v1';
+const MODEL_ID = 'parakeet-tdt-0.6b-v3';
+let S = load() || { sessions:[], deck:{}, days:{}, settings:{ hold:false, autoStop:true }, onboarded:false };
+function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)); }catch(e){ return null; } }
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }catch(e){} }
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ============================== sound tips (Mandarin speakers) ============================== */
+const TIPS = [
+ {id:'th', title:'“th” — think / this', body:'Two sounds: /θ/ voiceless (think, bath) and /ð/ voiced (this, breathe). Tongue tip lightly BETWEEN the teeth — never s or z.',
+  ex:['think','this','three'], test:w=>/th/i.test(w)},
+ {id:'rl', title:'r vs l — red / led', body:'/r/: tongue curled back, not touching anything. /l/: tongue tip pressed on the ridge behind your teeth. Watch “rl” clusters: world, girl.',
+  ex:['red','led','world'], test:w=>/^r/i.test(w)||/^wr/i.test(w)||/rl/i.test(w)},
+ {id:'vw', title:'v vs w — very / wary', body:'/v/: upper teeth touch lower lip (it buzzes). /w/: lips rounded, no teeth involved.',
+  ex:['very','west','wine'], test:w=>/^v/i.test(w)||/w/i.test(w)},
+ {id:'ed', title:'-ed endings', body:'/t/ after voiceless sounds (walked), /d/ after voiced (played), /ɪd/ after t/d (wanted, needed). Always pronounce the ending — don’t swallow it.',
+  ex:['walked','played','wanted'], test:w=>/ed$/i.test(w)&&w.length>3},
+ {id:'final', title:'Final consonants', body:'Don’t drop the last sound: “card” is not “car”, “code” is not “co”. Let the final consonant land.',
+  ex:['card','code','test'], test:w=>/[bcdfgklmnprstvxz]$/i.test(w)},
+ {id:'cluster', title:'Consonant clusters', body:'asked, texts, world, sixths — say EVERY consonant. Slow down rather than skipping one.',
+  ex:['asked','texts','world'], test:w=>/[bcdfgklmnprstvwxz]{2,}$/i.test(w)},
+ {id:'stress', title:'Word stress', body:'English is stress-timed: make the stressed syllable longer and louder, and shrink the rest (unstressed vowels become “uh”). PHOtograph vs phoTOgrapher.',
+  ex:['photograph','banana','computer'], test:w=>(w.toLowerCase().match(/[aeiouy]+/g)||[]).length>=3},
+ {id:'inton', title:'Intonation', body:'Statements fall at the end. Yes/no questions rise. It’s the tune that makes you sound natural, not just the sounds.',
+  ex:['really','today','morning'], test:()=>false},
+];
+function tipsFor(word){
+  const out=[];
+  for(const t of TIPS){ if(t.id==='inton') continue; try{ if(t.test(word)){ out.push(t); if(out.length>=2) break; } }catch(e){} }
+  return out;
+}
+
+/* ============================== audio utils ============================== */
+async function blobToMono16k(blob){
+  const ab = await blob.arrayBuffer();
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const ctx = new AC();
+  try{
+    const buf = await ctx.decodeAudioData(ab);
+    const ch = buf.getChannelData(0);
+    if(buf.sampleRate === 16000) return ch;
+    const ratio = buf.sampleRate/16000;
+    const len = Math.max(1, Math.floor(ch.length/ratio));
+    const out = new Float32Array(len);
+    for(let i=0;i<len;i++){
+      const p=i*ratio, i0=Math.floor(p), f=p-i0;
+      const a=ch[i0]||0, b=ch[i0+1]||0;
+      out[i]=a+(b-a)*f;
+    }
+    return out;
+  } finally { try{ ctx.close(); }catch(e){} }
+}
+
+/* ============================== model ============================== */
+let pkModel = null, modelState = 'idle'; // idle|loading|ready|error
+let modelError = '';
+const pill = document.getElementById('enginePill');
+const banner = document.getElementById('modelBanner');
+function setPill(txt, cls){ pill.textContent = txt; pill.className = 'pill'+(cls?' '+cls:''); }
+function renderModelUI(){
+  const info = document.getElementById('modelInfo');
+  const backend = ('gpu' in navigator) ? 'WebGPU' : 'WASM';
+  if(modelState==='ready'){
+    setPill('model ready · '+backend, 'ok');
+    banner.innerHTML = '<b>Parakeet is ready</b> — transcribing fully on-device ('+backend+'). Tap the mic and talk.';
+    info.innerHTML = '<b>'+MODEL_ID+'</b><br>Backend: '+backend+' · on-device, offline after download';
+    document.getElementById('dlBtn').disabled = true;
+    document.getElementById('dlBtn').textContent = '✓ Model ready';
+  } else if(modelState==='loading'){
+    setPill('downloading model…','busy');
+    banner.innerHTML = '<b>Downloading the speech model…</b> one-time, a few hundred MB. Keep this tab open.<div class="bar"><i id="dlBar"></i></div>';
+    info.innerHTML = 'Downloading…';
+  } else if(modelState==='error'){
+    setPill('model failed','err');
+    banner.innerHTML = '<b>Model failed to load.</b> '+esc(modelError)+' <button class="btn" id="retryDl" style="margin-top:8px">Try again</button>';
+    info.innerHTML = 'Failed: '+esc(modelError);
+    const r=document.getElementById('retryDl'); if(r) r.onclick=()=>loadModel();
+    document.getElementById('dlBtn').disabled = false;
+    document.getElementById('dlBtn').textContent = '⬇ Download model';
+  } else {
+    setPill('model not loaded','');
+    banner.innerHTML = '<b>One download to start:</b> the Parakeet speech model (~0.5 GB, one time) runs 100% on your device — no account, no key, works offline after. <button class="btn primary" id="dlNow" style="margin-top:8px">⬇ Download &amp; start</button>';
+    info.innerHTML = 'Not downloaded yet.';
+    const b=document.getElementById('dlNow'); if(b) b.onclick=()=>loadModel();
+  }
+}
+async function loadModel(){
+  if(modelState==='loading'||modelState==='ready') return;
+  modelState='loading'; renderModelUI();
+  const bar = ()=>document.getElementById('dlBar');
+  let pct = 0;
+  const tick = setInterval(()=>{ pct=Math.min(95,pct+Math.random()*4); const b=bar(); if(b) b.style.width=pct+'%'; }, 600);
+  const useGPU = ('gpu' in navigator);
+  const attempts = useGPU
+    ? [{backend:'webgpu',encoderQuant:'fp32',decoderQuant:'int8'},
+       {backend:'webgpu',encoderQuant:'int8',decoderQuant:'int8'},
+       {backend:'wasm',encoderQuant:'int8',decoderQuant:'int8'}]
+    : [{backend:'wasm',encoderQuant:'int8',decoderQuant:'int8'}];
+  let lastErr = null;
+  for(const cfg of attempts){
+    try{
+      pkModel = await fromHub(MODEL_ID, cfg);
+      // warmup on 1s of silence so first real transcription isn't slow
+      try{ await pkModel.transcribe(new Float32Array(16000), 16000, {}); }catch(e){}
+      modelState='ready';
+      clearInterval(tick);
+      renderModelUI(); renderAll();
+      return;
+    }catch(e){ lastErr = e; }
+  }
+  clearInterval(tick);
+  modelState='error';
+  modelError = (lastErr && (lastErr.message||String(lastErr))).slice(0,180) || 'unknown error';
+  renderModelUI();
+}
+function extractWords(result, durationSec){
+  const out=[];
+  const raw = (result && (result.words || result.tokens)) || [];
+  for(const w of raw){
+    const text = w.text ?? w.word ?? w.token ?? '';
+    if(!text || !text.trim()) continue;
+    out.push({ text:text.trim(),
+      start: w.start ?? w.startTime ?? 0,
+      end: w.end ?? w.endTime ?? 0,
+      conf: w.confidence ?? w.conf ?? w.score ?? null });
+  }
+  if(out.length) return out;
+  // fallback: split utterance text, spread evenly
+  const txt = (result && (result.utterance_text || result.text)) || '';
+  const toks = txt.split(/\s+/).filter(Boolean);
+  return toks.map((t,i)=>({ text:t, start:durationSec*i/Math.max(1,toks.length), end:durationSec*(i+1)/Math.max(1,toks.length), conf:null }));
+}
+async function transcribePCM(pcm16k){
+  if(!pkModel) throw new Error('model not loaded');
+  const res = await pkModel.transcribe(pcm16k, 16000, { returnTimestamps:true, returnConfidences:true });
+  const text = (res && (res.utterance_text || res.text) || '').trim();
+  const words = extractWords(res, pcm16k.length/16000);
+  return { text, words };
+}
+
+/* ============================== recording ============================== */
+const micBtn=document.getElementById('micBtn'), recMeta=document.getElementById('recMeta'), meterFill=document.getElementById('meterFill');
+let rec=null, recStream=null, recChunks=[], recActx=null, recAnalyser=null, recTimer=null, recStart=0, silenceSince=0, recording=false, checkMode=null;
+
+function pickMime(){
+  if(!window.MediaRecorder) return '';
+  const c=['audio/webm;codecs=opus','audio/webm','audio/mp4'];
+  for(const t of c){ try{ if(MediaRecorder.isTypeSupported(t)) return t; }catch(e){} }
+  return '';
+}
+async function startRecording(opts){
+  opts=opts||{};
+  if(recording) return;
+  if(modelState!=='ready'){ recMeta.textContent='download the model first'; return; }
+  try{
+    recStream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+  }catch(e){ recMeta.textContent='mic blocked — allow microphone access'; return; }
+  const mime=pickMime();
+  recChunks=[];
+  rec=new MediaRecorder(recStream, mime?{mimeType:mime}:undefined);
+  rec.ondataavailable=e=>{ if(e.data&&e.data.size) recChunks.push(e.data); };
+  rec.onstop=()=>{ const b=new Blob(recChunks,{type:mime||'audio/webm'}); finishRecording(b, opts); };
+  recActx=new (window.AudioContext||window.webkitAudioContext)();
+  const src=recActx.createMediaStreamSource(recStream);
+  recAnalyser=recActx.createAnalyser(); recAnalyser.fftSize=2048;
+  src.connect(recAnalyser);
+  const buf=new Float32Array(recAnalyser.fftSize);
+  recording=true; recStart=Date.now(); silenceSince=Date.now();
+  micBtn.classList.add('rec'); micBtn.textContent='⏹';
+  recMeta.textContent= opts.label || 'listening… tap to stop';
+  rec.start(250);
+  clearInterval(recTimer);
+  recTimer=setInterval(()=>{
+    const el=(Date.now()-recStart)/1000;
+    recMeta.textContent=(opts.label||'listening…')+' · '+el.toFixed(0)+'s — tap to stop';
+    recAnalyser.getFloatTimeDomainData(buf);
+    let sum=0; for(let i=0;i<buf.length;i++) sum+=buf[i]*buf[i];
+    const rms=Math.sqrt(sum/buf.length);
+    meterFill.style.width=Math.min(100, rms*400)+'%';
+    const now=Date.now();
+    if(rms<0.012){ if(now-silenceSince>(opts.silenceMs||2500) && S.settings.autoStop!==false && !opts.noAutoStop) stopRecording(); }
+    else silenceSince=now;
+    if(el>(opts.maxSec||180)) stopRecording();
+  },250);
+}
+function stopRecording(){
+  if(!recording) return;
+  recording=false;
+  clearInterval(recTimer); meterFill.style.width='0';
+  micBtn.classList.remove('rec'); micBtn.textContent='🎙️';
+  recMeta.textContent='transcribing…';
+  try{ rec.stop(); }catch(e){ finishRecording(new Blob(recChunks), {}); }
+  if(recStream) recStream.getTracks().forEach(t=>t.stop());
+  if(recActx) recActx.close().catch(()=>{});
+}
+async function finishRecording(blob, opts){
+  const durSec=(Date.now()-recStart)/1000;
+  try{
+    const pcm=await blobToMono16k(blob);
+    if(pcm.length<8000){ recMeta.textContent='too short — try again'; return; }
+    const {text, words}=await transcribePCM(pcm);
+    if(opts && opts.checkWord){ handleCheckResult(opts.checkWord, text); return; }
+    if(!text){ recMeta.textContent='didn’t catch that — try again'; return; }
+    addSession(text, words, durSec);
+    recMeta.textContent='tap to dictate';
+  }catch(e){
+    recMeta.textContent='transcription failed: '+String((e&&e.message)||e).slice(0,80);
+  }
+}
+// mic button: tap-toggle or hold-to-talk
+(function(){
+  const btn=micBtn;
+  let holdTimer=null, held=false;
+  btn.addEventListener('pointerdown',()=>{
+    if(!S.settings.hold) return;
+    held=true; holdTimer=setTimeout(()=>{ if(held) startRecording(); },120);
+  });
+  const up=()=>{ if(!S.settings.hold) return; held=false; clearTimeout(holdTimer); if(recording) stopRecording(); };
+  btn.addEventListener('pointerup',up); btn.addEventListener('pointercancel',up); btn.addEventListener('pointerleave',up);
+  btn.addEventListener('click',()=>{ if(S.settings.hold) return; recording?stopRecording():startRecording(); });
+})();
+
+/* ============================== transcript ============================== */
+let curWords=[];
+function addSession(text, words, durSec){
+  const flagged=flagWords(words);
+  curWords=words.map((w,i)=>({...w, flag:flagged[i]}));
+  S.sessions.unshift({id:Date.now(), ts:Date.now(), text, words:curWords, durSec:Math.round(durSec)});
+  if(S.sessions.length>60) S.sessions.length=60;
+  save(); renderTranscript(); renderHistory();
+}
+function flagWords(words){
+  return words.map(w=>{
+    const t=w.text.replace(/[.,!?;:'"()]/g,'');
+    if(!t) return null;
+    if(w.conf!=null && w.conf<0.6) return 'lowconf';
+    const tips=tipsFor(t);
+    if(tips.length) return 'flag';
+    return null;
+  });
+}
+function renderTranscript(){
+  const el=document.getElementById('transcript');
+  if(!curWords.length){ el.innerHTML='<p class="hint">Your dictation appears here. Tap any word to open its pronunciation coach.<br><br>Dotted underlines mark words worth practicing.</p>'; return; }
+  el.innerHTML='';
+  curWords.forEach((w,i)=>{
+    const s=document.createElement('span');
+    s.className='w'+(w.flag==='flag'?' flag':w.flag==='lowconf'?' lowconf':'')+((S.deck[w.text.toLowerCase()]&&!S.deck[w.text.toLowerCase()].cleared)?' practiced':'');
+    s.textContent=w.text;
+    s.onclick=()=>openCoach(w.text, w.conf);
+    el.appendChild(s); el.appendChild(document.createTextNode(' '));
+  });
+}
+function tokens(s){ return s.split(/\s+/).filter(Boolean); }
+document.getElementById('editBtn').onclick=()=>{
+  document.getElementById('editor').hidden=false;
+  document.getElementById('editArea').value=curWords.map(w=>w.text).join(' ');
+};
+document.getElementById('cancelEdit').onclick=()=>{ document.getElementById('editor').hidden=true; };
+document.getElementById('saveEdit').onclick=()=>{
+  const oldToks=tokens(curWords.map(w=>w.text).join(' '));
+  const newToks=tokens(document.getElementById('editArea').value);
+  // prefix/suffix trim, then positional pairing of the middle
+  let a=0; while(a<oldToks.length&&a<newToks.length&&oldToks[a]===newToks[a]) a++;
+  let b=0; while(b<oldToks.length-a&&b<newToks.length-a&&oldToks[oldToks.length-1-b]===newToks[newToks.length-1-b]) b++;
+  const oldMid=oldToks.slice(a,oldToks.length-b), newMid=newToks.slice(a,newToks.length-b);
+  const n=Math.min(oldMid.length,newMid.length);
+  for(let i=0;i<n;i++){
+    if(oldMid[i]!==newMid[i]) upsertDeck(newMid[i], oldMid[i], 'correction');
+  }
+  curWords=newToks.map(t=>({text:t,start:0,end:0,conf:null,flag:tipsFor(t.replace(/[.,!?;:'"()]/g,'')).length?'flag':null}));
+  document.getElementById('editor').hidden=true;
+  save(); renderTranscript(); renderDeck(); renderStats();
+};
+document.getElementById('copyBtn').onclick=()=>{
+  const t=curWords.map(w=>w.text).join(' ');
+  if(navigator.clipboard) navigator.clipboard.writeText(t).then(()=>{recMeta.textContent='copied ✓';setTimeout(()=>recMeta.textContent='tap to dictate',1500);});
+};
+document.getElementById('clearBtn').onclick=()=>{ curWords=[]; renderTranscript(); };
+
+/* ============================== deck ============================== */
+function upsertDeck(word, heardAs, source){
+  const w=word.replace(/[.,!?;:'"()]/g,'').trim();
+  if(!w||w.length<2) return;
+  const k=w.toLowerCase();
+  const ex=S.deck[k];
+  S.deck[k]={ word:w, heardAs:heardAs||(ex&&ex.heardAs)||null, source:source||(ex&&ex.source)||'manual',
+    streak:(ex&&ex.streak)||0, attempts:(ex&&ex.attempts)||0, cleared:false, updated:Date.now() };
+  save();
+}
+function renderStats(){
+  const items=Object.values(S.deck);
+  const active=items.filter(i=>!i.cleared).length;
+  const cleared=items.filter(i=>i.cleared).length;
+  const days=Object.keys(S.days||{}).length;
+  document.getElementById('pStats').innerHTML=
+    '<div class="stat"><b>'+active+'</b><span>to practice</span></div>'+
+    '<div class="stat"><b>'+cleared+'</b><span>cleared</span></div>'+
+    '<div class="stat"><b>'+days+'</b><span>day streak</span></div>';
+}
+function renderDeck(){
+  const el=document.getElementById('deck');
+  const items=Object.values(S.deck).filter(i=>!i.cleared).sort((a,b)=>b.updated-a.updated);
+  if(!items.length){ el.innerHTML='<div class="empty">Nothing to practice yet.<br>Dictate something, or tap any word, then “Practice later”.</div>'; return; }
+  el.innerHTML='';
+  items.slice(0,20).forEach(it=>{
+    const d=document.createElement('div'); d.className='deckcard';
+    d.innerHTML='<div class="dw">'+esc(it.word)+'</div>'+
+      (it.heardAs?'<div class="dh">I heard “'+esc(it.heardAs)+'” — you meant “'+esc(it.word)+'”</div>':'<div class="dh">streak '+it.streak+' · '+it.attempts+' tries</div>');
+    const row=document.createElement('div'); row.className='row';
+    const b1=document.createElement('button'); b1.className='btn primary'; b1.textContent='🎯 Practice';
+    b1.onclick=()=>openCoach(it.word, null, it);
+    const b2=document.createElement('button'); b2.className='btn'; b2.textContent='✓ Got it';
+    b2.onclick=()=>{ it.cleared=true; save(); renderDeck(); renderStats(); renderTranscript(); };
+    row.appendChild(b1); row.appendChild(b2); d.appendChild(row);
+    el.appendChild(d);
+  });
+}
+function renderTips(){
+  const el=document.getElementById('tips'); el.innerHTML='';
+  TIPS.forEach(t=>{
+    const d=document.createElement('div'); d.className='tiprow';
+    d.innerHTML='<button><span>'+esc(t.title)+'</span><span>›</span></button><div class="tb">'+esc(t.body)+'<div class="ex"></div></div>';
+    d.querySelector('button').onclick=()=>d.classList.toggle('open');
+    const ex=d.querySelector('.ex');
+    t.ex.forEach(w=>{ const b=document.createElement('button'); b.textContent=w; b.onclick=e=>{e.stopPropagation();openCoach(w,null);}; ex.appendChild(b); });
+    el.appendChild(d);
+  });
+}
+
+/* ============================== coaching card ============================== */
+const coachWrap=document.getElementById('coachWrap'), coachCard=document.getElementById('coachCard');
+const dictCache={};
+async function dictLookup(word){
+  const k=word.toLowerCase();
+  if(dictCache[k]!==undefined) return dictCache[k];
+  try{
+    const r=await fetch('https://api.dictionaryapi.dev/api/v2/entries/en/'+encodeURIComponent(k));
+    if(!r.ok) throw 0;
+    const j=await r.json();
+    const e=j[0]||{};
+    let ipa=e.phonetic||'';
+    let audio='';
+    for(const p of (e.phonetics||[])){ if(!ipa&&p.text) ipa=p.text; if(!audio&&p.audio) audio=p.audio; }
+    dictCache[k]={ipa,audio}; return dictCache[k];
+  }catch(e){ dictCache[k]=null; return null; }
+}
+function speak(text, slow){
+  try{
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='en-US'; u.rate=slow?0.55:1;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+let coachWord=null, coachItem=null;
+async function openCoach(word, conf, item){
+  const w=word.replace(/[.,!?;:'"()]/g,'').trim();
+  if(!w) return;
+  coachWord=w; coachItem=item||null;
+  coachWrap.hidden=false;
+  coachCard.innerHTML='<div class="coach-word">'+esc(w)+'</div><div class="coach-ipa" id="ccIpa">looking up…</div>'+
+    '<div class="row"><button class="btn" id="ccNative">🔊 native</button><button class="btn" id="ccSlow">🐢 slow</button></div>'+
+    '<div id="ccTips"></div>'+
+    '<div class="verdict" id="ccVerdict"></div><div class="streakline" id="ccStreak"></div>'+
+    '<div class="row"><button class="btn primary" id="ccRec">🎤 record &amp; check</button></div>'+
+    '<div class="row"><button class="btn" id="ccLater">📌 practice later</button><button class="btn" id="ccDismiss">✓ got it</button></div>'+
+    '<div class="row"><button class="btn" id="ccClose">close</button></div>';
+  document.getElementById('ccClose').onclick=closeCoach;
+  coachWrap.onclick=e=>{ if(e.target===coachWrap) closeCoach(); };
+  const tips=tipsFor(w);
+  const tEl=document.getElementById('ccTips');
+  tEl.innerHTML=tips.map(t=>'<div class="tipbox"><b>'+esc(t.title)+'</b>'+esc(t.body)+'</div>').join('')||
+    '<div class="tipbox"><b>Sounds fine</b>No known-hard sounds for Mandarin speakers in this word.</div>';
+  dictLookup(w).then(d=>{
+    document.getElementById('ccIpa').textContent=d&&d.ipa?d.ipa:'';
+    const nb=document.getElementById('ccNative');
+    if(d&&d.audio){ const au=new Audio(d.audio); nb.onclick=()=>au.play(); }
+    else { nb.disabled=true; nb.textContent='🔊 native n/a'; }
+  });
+  document.getElementById('ccSlow').onclick=()=>speak(w,true);
+  document.getElementById('ccRec').onclick=()=>{ closeCoach(); startCheck(w); };
+  document.getElementById('ccLater').onclick=()=>{ upsertDeck(w, item&&item.heardAs, (item&&item.source)||'manual'); closeCoach(); renderDeck(); renderStats(); renderTranscript(); };
+  document.getElementById('ccDismiss').onclick=()=>{
+    const k=w.toLowerCase(); if(S.deck[k]){ S.deck[k].cleared=true; save(); }
+    closeCoach(); renderDeck(); renderStats(); renderTranscript();
+  };
+  renderStreak();
+}
+function renderStreak(){
+  const el=document.getElementById('ccStreak'); if(!el) return;
+  const k=coachWord.toLowerCase(); const it=S.deck[k];
+  el.textContent=it?('streak '+it.streak+' · '+it.attempts+' tries'):'not in practice deck yet';
+}
+function closeCoach(){ coachWrap.hidden=true; coachCard.innerHTML=''; }
+function norm(s){ return s.toLowerCase().replace(/[^a-z'\s]/g,' ').replace(/\s+/g,' ').trim(); }
+function lev(a,b){
+  const m=a.length,n=b.length; if(!m) return n; if(!n) return m;
+  const d=new Array(n+1); for(let j=0;j<=n;j++) d[j]=j;
+  for(let i=1;i<=m;i++){ let prev=d[0]; d[0]=i;
+    for(let j=1;j<=n;j++){ const t=d[j]; d[j]=Math.min(d[j]+1,d[j-1]+1,prev+(a[i-1]===b[j-1]?0:1)); prev=t; } }
+  return d[n];
+}
+function startCheck(word){
+  if(modelState!=='ready'){ recMeta.textContent='download the model first'; switchTab('tab-dictate'); return; }
+  switchTab('tab-dictate');
+  recMeta.textContent='say “'+word+'”';
+  startRecording({label:'say “'+word+'”', maxSec:6, silenceMs:1500, checkWord:word});
+}
+async function handleCheckResult(target, heardText){
+  const t=norm(target), h=norm(heardText);
+  const pass = h===t || h.split(' ').includes(t) || (h&&t&&(lev(h,t)/Math.max(h.length,t.length)<=0.25));
+  const k=t; const it=S.deck[k]||{word:target,heardAs:null,source:'check',streak:0,attempts:0,cleared:false};
+  it.attempts=(it.attempts||0)+1;
+  if(pass){ it.streak=(it.streak||0)+1; if(it.streak>=2) it.cleared=true; }
+  else { it.streak=0; it.heardAs=heardText.split(/\s+/)[0]||it.heardAs; }
+  it.updated=Date.now(); S.deck[k]=it;
+  const dk=todayStr(); S.days[dk]=(S.days[dk]||0)+1;
+  save(); renderDeck(); renderStats(); renderTranscript();
+  openCoach(target, null, it);
+  const v=document.getElementById('ccVerdict');
+  if(v){
+    if(!h){ v.textContent='didn’t catch that — try again'; v.className='verdict bad'; }
+    else if(pass){ v.textContent='✓ heard “'+heardText.trim()+'” — nice!'; v.className='verdict good'; }
+    else { v.textContent='✗ I heard “'+heardText.trim()+'” — once more'; v.className='verdict bad'; }
+  }
+  renderStreak();
+}
+
+/* ============================== history ============================== */
+function renderHistory(){
+  const el=document.getElementById('history');
+  if(!S.sessions.length){ el.innerHTML='<div class="empty">No sessions yet.</div>'; return; }
+  el.innerHTML='';
+  S.sessions.forEach(s=>{
+    const d=document.createElement('div'); d.className='hist';
+    const dt=new Date(s.ts);
+    d.innerHTML='<div class="hd"><span>'+dt.toLocaleDateString()+' '+dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</span><span>'+s.words.length+' words · '+s.durSec+'s</span></div><div class="ht">'+esc(s.text)+'</div>';
+    const row=document.createElement('div'); row.className='row';
+    const b1=document.createElement('button'); b1.className='btn'; b1.textContent='📋 Copy';
+    b1.onclick=()=>{ if(navigator.clipboard) navigator.clipboard.writeText(s.text); };
+    const b2=document.createElement('button'); b2.className='btn danger'; b2.textContent='Delete';
+    b2.onclick=()=>{ S.sessions=S.sessions.filter(x=>x.id!==s.id); save(); renderHistory(); };
+    const b3=document.createElement('button'); b3.className='btn'; b3.textContent='Open';
+    b3.onclick=()=>{ curWords=s.words.map(w=>({...w})); renderTranscript(); switchTab('tab-dictate'); };
+    row.appendChild(b3); row.appendChild(b1); row.appendChild(b2); d.appendChild(row);
+    el.appendChild(d);
+  });
+}
+
+/* ============================== tabs / settings / diagnostics ============================== */
+function switchTab(id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.id===id));
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===id));
+}
+document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+function renderSettings(){
+  document.getElementById('setHold').checked=!!S.settings.hold;
+  document.getElementById('setAutoStop').checked=S.settings.autoStop!==false;
+}
+document.getElementById('setHold').onchange=e=>{ S.settings.hold=e.target.checked; save(); };
+document.getElementById('setAutoStop').onchange=e=>{ S.settings.autoStop=e.target.checked; save(); };
+document.getElementById('dlBtn').onclick=()=>loadModel();
+function setDot(id, ok){ const el=document.getElementById(id); el.textContent=ok?'✓':'✗'; el.className='dot '+(ok?'ok':'bad'); }
+document.getElementById('diagRun').onclick=async()=>{
+  try{ await navigator.mediaDevices.getUserMedia({audio:true}).then(st=>st.getTracks().forEach(t=>t.stop())); setDot('dMic',true); }
+  catch(e){ setDot('dMic',false); }
+  setDot('dModel', modelState==='ready');
+  try{ const r=await fetch('https://api.dictionaryapi.dev/api/v2/entries/en/hello'); setDot('dDict', r.ok); }
+  catch(e){ setDot('dDict', false); }
+};
+document.getElementById('exportBtn').onclick=()=>{
+  const blob=new Blob([JSON.stringify(S)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='dictation-coach-backup.json'; a.click();
+};
+document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();
+document.getElementById('importFile').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{ const j=JSON.parse(r.result); if(j&&j.deck){ S=j; save(); renderAll(); alert('imported ✓'); } }catch(err){ alert('bad file'); } };
+  r.readAsText(f);
+};
+document.getElementById('wipeBtn').onclick=()=>{
+  if(confirm('Erase all sessions, deck and stats?')){ S={sessions:[],deck:{},days:{},settings:S.settings,onboarded:true}; save(); curWords=[]; renderAll(); }
+};
+
+/* ============================== onboarding ============================== */
+function showOnboard(){
+  if(S.onboarded) return;
+  const w=document.getElementById('onboardWrap'); w.hidden=false;
+  document.getElementById('onboard').innerHTML=
+    '<div class="big">🎙️</div><h2>Dictate naturally.<br>Fix how you say it.</h2>'+
+    '<p>Talk, get your text. Tap any word for its pronunciation coach: IPA, native audio, mouth tips, and a record-and-check loop.<br><br>First, one download: the Parakeet speech model (~0.5 GB). It runs <b>100% on your device</b> — no account, no key, works offline after.</p>'+
+    '<div class="row"><button class="btn primary" id="obDl">⬇ Download model &amp; start</button></div>'+
+    '<div class="row"><button class="btn" id="obLater">I’ll do it later</button></div>';
+  document.getElementById('obDl').onclick=()=>{ w.hidden=true; S.onboarded=true; save(); loadModel(); };
+  document.getElementById('obLater').onclick=()=>{ w.hidden=true; S.onboarded=true; save(); };
+}
+
+/* ============================== init ============================== */
+function renderAll(){ renderModelUI(); renderTranscript(); renderDeck(); renderStats(); renderTips(); renderHistory(); renderSettings(); }
+renderAll();
+showOnboard();
+</script>
+</body>
+</html>
